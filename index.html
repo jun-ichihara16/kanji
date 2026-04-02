@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KANJI — 幹事の憂鬱を、LINEでスマートに。</title>
+<meta name="description" content="割り勘計算・PayPay番号収集・支払いリマインドが全自動。幹事がラクになる。参加者も30秒で完了。やるほど特典が貯まる、幹事のためのアプリ。">
+<meta property="og:title" content="KANJI — 幹事を、もっとラクに。得に。">
+<meta property="og:description" content="割り勘計算・PayPay番号収集・支払いリマインドが全自動。幹事がラクになる。参加者も30秒で完了。">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --green:#22C55E;--green-dark:#16A34A;--bg:#FFFFFF;--text:#1A1A1A;--sub:#6B7280;--light-bg:#F9FAFB;
+  --red:#EF4444;--orange:#F97316;--yellow:#EAB308;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Sans JP','Inter',sans-serif;color:var(--text);background:var(--bg);line-height:1.7;-webkit-font-smoothing:antialiased}
+.inter{font-family:'Inter','Noto Sans JP',sans-serif}
+.container{max-width:960px;margin:0 auto;padding:0 20px}
+h2{font-size:1.75rem;font-weight:800;margin-bottom:.5rem}
+.section-title{text-align:center;margin-bottom:48px}
+.section-title p{color:var(--sub);font-size:1rem;margin-top:8px;max-width:600px;margin-left:auto;margin-right:auto}
+.btn{display:inline-block;padding:14px 32px;border-radius:12px;font-weight:700;font-size:1rem;text-decoration:none;cursor:pointer;border:none;transition:all .25s}
+.btn-primary{background:var(--green);color:#fff}
+.btn-primary:hover{background:var(--green-dark);transform:translateY(-2px);box-shadow:0 4px 16px rgba(34,197,94,.35)}
+.btn-outline{background:transparent;color:var(--green);border:2px solid var(--green)}
+.btn-outline:hover{background:var(--green);color:#fff;transform:translateY(-2px)}
+
+/* ===== NAV ===== */
+.nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(255,255,255,.97);box-shadow:0 1px 12px rgba(0,0,0,.06)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:960px;margin:0 auto;padding:0 20px}
+.nav-logo{font-size:1.5rem;font-weight:800;color:var(--green);text-decoration:none;letter-spacing:-.02em;display:flex;align-items:center;gap:6px}
+.nav-logo img{display:block}
+.nav-cta .btn{padding:10px 20px;font-size:.875rem}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:4px}
+.hamburger span{display:block;width:24px;height:2px;background:var(--text);border-radius:2px;transition:all .3s}
+@media(max-width:768px){
+  .nav-cta{display:none!important}
+  .hamburger{display:flex}
+}
+
+/* ===== HERO ===== */
+.hero{padding:100px 0 60px;text-align:center;background:linear-gradient(180deg,#f0fdf4 0%,#fff 100%)}
+.hero-badge{display:inline-block;background:#dcfce7;color:var(--green-dark);font-size:.8rem;font-weight:600;padding:6px 16px;border-radius:100px;margin-bottom:24px}
+.hero h1{font-size:clamp(2rem,5vw,3.25rem);font-weight:800;line-height:1.3;margin-bottom:20px}
+.hero h1 .highlight{color:var(--green)}
+.hero-sub{color:var(--sub);font-size:1.05rem;line-height:1.8;max-width:540px;margin:0 auto 40px}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+.kpi-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:24px 12px;text-align:center}
+.kpi-card .num{font-family:'Inter','Noto Sans JP',sans-serif;font-size:2rem;font-weight:800;color:var(--green)}
+.kpi-card .label{font-size:.8rem;color:var(--sub);margin-top:4px}
+.tags{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:36px}
+.tags span{background:var(--light-bg);border:1px solid #e5e7eb;padding:6px 14px;border-radius:100px;font-size:.8rem;font-weight:500;color:var(--sub)}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+@media(max-width:600px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ===== TAB BAR ===== */
+.tab-bar-wrapper{position:sticky;top:64px;z-index:900;background:#fff;border-bottom:1px solid #e5e7eb;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.tab-bar{max-width:960px;margin:0 auto;padding:0 12px;display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab-btn{flex-shrink:0;padding:14px 18px;font-size:.85rem;font-weight:600;color:var(--sub);background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;transition:all .2s;white-space:nowrap}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--green);border-bottom-color:var(--green)}
+.cta-tab{flex-shrink:0;margin:8px 0 8px 8px}
+.cta-tab .btn{padding:10px 24px;font-size:.85rem;border-radius:10px}
+@media(max-width:768px){
+  .tab-btn{padding:12px 14px;font-size:.8rem}
+  .cta-tab{display:none}
+}
+
+/* Mobile tab drawer */
+.mobile-tab-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:998}
+.mobile-tab-overlay.open{display:block}
+.mobile-tab-drawer{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;z-index:999;border-radius:20px 20px 0 0;padding:24px 20px 36px;box-shadow:0 -4px 30px rgba(0,0,0,.12);max-height:70vh;overflow-y:auto}
+.mobile-tab-drawer.open{display:block}
+.mobile-tab-drawer .drawer-title{font-size:.85rem;font-weight:600;color:var(--sub);margin-bottom:16px;text-align:center}
+.mobile-tab-drawer a{display:flex;align-items:center;gap:12px;padding:14px 16px;font-size:1rem;font-weight:500;color:var(--text);text-decoration:none;border-radius:12px;margin-bottom:4px;transition:background .15s}
+.mobile-tab-drawer a:hover,.mobile-tab-drawer a.active{background:#f0fdf4;color:var(--green)}
+.mobile-tab-drawer a .tab-icon{font-size:1.2rem;width:28px;text-align:center}
+
+/* ===== TAB PANELS ===== */
+.tab-panel{display:none;padding:60px 0 80px;animation:fadeUp .4s ease}
+.tab-panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* ===== PAIN ===== */
+.pain-num-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:40px}
+@media(max-width:600px){.pain-num-grid{grid-template-columns:1fr}}
+.pain-num-card{background:#fff;border-radius:16px;padding:28px 24px;border:1px solid #e5e7eb}
+.pain-num-card .big{font-family:'Inter','Noto Sans JP',sans-serif;font-size:2.25rem;font-weight:800;color:var(--text)}
+.pain-num-card .desc{color:var(--sub);font-size:.9rem;margin-top:4px}
+.pain-num-card .source{color:#a1a1aa;font-size:.75rem;margin-top:8px}
+.pain-cards{display:flex;flex-direction:column;gap:16px;margin-bottom:40px}
+.pain-card{background:#fff;border-radius:12px;padding:24px;border:1px solid #e5e7eb;position:relative;overflow:hidden}
+.pain-card .pain-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.pain-card .pain-tag{font-size:.7rem;font-weight:700;color:#fff;padding:3px 10px;border-radius:6px;letter-spacing:.02em}
+.pain-card .pain-tag.tag-red{background:var(--red)}
+.pain-card .pain-tag.tag-orange{background:var(--orange)}
+.pain-card .pain-tag.tag-yellow{background:var(--yellow)}
+.pain-card .pain-header h3{font-size:.95rem;font-weight:700;margin:0}
+.pain-card .pain-subtitle{font-size:.9rem;font-weight:600;margin-bottom:12px}
+.pain-card ul{list-style:none;margin-bottom:14px}
+.pain-card ul li{position:relative;padding-left:20px;color:var(--sub);font-size:.85rem;margin-bottom:6px;line-height:1.5}
+.pain-card ul li::before{content:"";position:absolute;left:2px;top:8px;width:6px;height:6px;border-radius:50%;background:var(--border)}
+.pain-card .cost{font-size:.82rem;color:var(--sub);background:var(--light-bg);padding:10px 14px;border-radius:8px;display:flex;align-items:center;gap:6px}
+.pain-card .cost svg{width:14px;height:14px;flex-shrink:0;color:var(--sub)}
+.pain-card .cost strong{color:var(--text);font-weight:700}
+.solution-box{background:var(--green);color:#fff;border-radius:20px;padding:40px 32px;text-align:center}
+.solution-box .sol-headline{font-size:1.3rem;font-weight:800;margin-bottom:20px;line-height:1.5;letter-spacing:.01em}
+.solution-box .sol-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.solution-box .sol-item{background:rgba(255,255,255,.15);border-radius:12px;padding:16px 10px;text-align:center}
+.solution-box .sol-item svg{width:28px;height:28px;margin-bottom:6px;opacity:.9}
+.solution-box .sol-item .sol-before{font-size:.75rem;opacity:.7;text-decoration:line-through;margin-bottom:2px}
+.solution-box .sol-item .sol-after{font-size:.9rem;font-weight:700}
+.solution-box .sol-bottom{font-size:.95rem;line-height:1.7;opacity:.9}
+.solution-box .sol-bottom strong{font-weight:700;opacity:1;font-size:1.05rem}
+@media(max-width:480px){.solution-box .sol-cols{grid-template-columns:1fr;gap:8px}.solution-box{padding:32px 20px}}
+
+/* ===== TARGET ===== */
+.target-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+@media(max-width:600px){.target-grid{grid-template-columns:1fr}}
+.target-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:28px 24px;text-align:center}
+.target-card .icon,.step-card .icon,.pay-card .icon,.reward-card .icon{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:14px;margin:0 auto 14px}
+.target-card .icon{margin:0 auto 14px}
+.icon svg{width:24px;height:24px}
+.icon.green{background:#dcfce7;color:var(--green-dark)}
+.icon.blue{background:#dbeafe;color:#2563eb}
+.icon.amber{background:#fef3c7;color:#d97706}
+.icon.red{background:#fee2e2;color:#dc2626}
+.icon.purple{background:#f3e8ff;color:#7c3aed}
+.icon.teal{background:#ccfbf1;color:#0d9488}
+.target-card h3{font-size:1.05rem;font-weight:700;margin-bottom:8px}
+.target-card p{color:var(--sub);font-size:.88rem}
+
+/* ===== STEPS ===== */
+.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;align-items:start;position:relative}
+@media(max-width:600px){.steps-grid{grid-template-columns:1fr;gap:20px}}
+.step-card{text-align:center;padding:0 16px;position:relative}
+.step-card .icon{margin:0 auto 14px}
+.step-num{font-family:'Inter',sans-serif;font-size:.75rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.step-card h3{font-size:1.05rem;font-weight:700;margin-bottom:8px}
+.step-card p{color:var(--sub);font-size:.88rem}
+.step-arrow{display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:#d1d5db;position:absolute;right:-12px;top:50%;transform:translateY(-50%)}
+@media(max-width:600px){.step-arrow{display:none}}
+
+/* ===== PARTICIPANT ===== */
+.participant-flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;align-items:center;gap:0;margin-bottom:48px}
+@media(max-width:700px){
+  .participant-flow{grid-template-columns:1fr;gap:0}
+}
+.pf-step{text-align:center;padding:20px 8px 24px;position:relative}
+.pf-step .pf-num{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;font-family:'Inter',sans-serif;font-size:1rem;font-weight:800;margin-bottom:12px;color:#fff;background:var(--green);box-shadow:0 4px 14px rgba(34,197,94,.3)}
+.pf-step .pf-icon{margin-bottom:8px;display:flex;align-items:center;justify-content:center}
+.pf-step .pf-icon svg{width:28px;height:28px;color:var(--sub)}
+.pf-step .pf-label{font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:4px}
+.pf-step .pf-desc{font-size:.8rem;color:var(--sub);line-height:1.5}
+.pf-step:last-of-type .pf-num{background:var(--green-dark)}
+.pf-connector{display:flex;align-items:center;justify-content:center;padding-bottom:24px}
+.pf-connector svg{width:32px;height:32px;color:#d1d5db}
+@media(max-width:700px){
+  .pf-step{padding:16px 0;border-left:3px solid var(--green);margin-left:22px;padding-left:28px;text-align:left}
+  .pf-step .pf-num{position:absolute;left:-24px;top:18px;width:40px;height:40px;font-size:.9rem}
+  .pf-connector{display:none}
+}
+.pay-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:32px}
+@media(max-width:600px){.pay-grid{grid-template-columns:1fr}}
+.pay-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:24px;text-align:center}
+.pay-card .emoji{font-size:1.8rem;margin-bottom:8px}
+.paypay-logo{margin-bottom:8px}
+.pay-card h3{font-size:1rem;font-weight:700;margin-bottom:6px}
+.pay-card p{font-size:.85rem;color:var(--sub)}
+.participant-note{text-align:center;color:var(--sub);font-size:.9rem;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px 24px}
+
+/* ===== REWARD ===== */
+.reward-chat{max-width:420px;margin:0 auto 40px}
+.reward-chat .chat-bubble{background:var(--light-bg);border:1px solid var(--border);border-radius:0 20px 20px 20px;padding:20px 24px;position:relative;margin-bottom:10px}
+.reward-chat .chat-bubble .chat-text{font-size:1.15rem;font-weight:700;line-height:1.6}
+.reward-chat .chat-meta{display:flex;align-items:center;gap:8px;padding-left:4px}
+.reward-chat .chat-avatar{width:32px;height:32px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center}
+.reward-chat .chat-avatar svg{width:16px;height:16px;color:#fff}
+.reward-chat .chat-sender{font-size:.8rem;color:var(--sub)}
+.reward-chat .chat-time{font-size:.75rem;color:#a1a1aa;margin-left:auto}
+.reward-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:28px}
+@media(max-width:600px){.reward-grid{grid-template-columns:1fr}}
+.reward-card{background:#fff;border-radius:16px;padding:28px 24px;text-align:center;border:2px solid #e5e7eb;position:relative;overflow:hidden}
+.reward-card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px}
+.reward-card.tier-bronze{border-color:#D4A574}
+.reward-card.tier-bronze::before{background:linear-gradient(90deg,#CD7F32,#D4A574)}
+.reward-card.tier-bronze .icon{background:#fdf2e9;color:#CD7F32}
+.reward-card.tier-bronze h3{color:#B8703A}
+.reward-card.tier-bronze .pt{color:#CD7F32}
+.reward-card.tier-silver{border-color:#B8C4CF}
+.reward-card.tier-silver::before{background:linear-gradient(90deg,#8E9EAB,#C0C0C0)}
+.reward-card.tier-silver .icon{background:#f0f2f5;color:#6B7B8D}
+.reward-card.tier-silver h3{color:#6B7B8D}
+.reward-card.tier-silver .pt{color:#8E9EAB}
+.reward-card.tier-gold{border-color:#E5C65C}
+.reward-card.tier-gold::before{background:linear-gradient(90deg,#D4AF37,#F5D442)}
+.reward-card.tier-gold .icon{background:#fef9e7;color:#D4AF37}
+.reward-card.tier-gold h3{color:#B8960C}
+.reward-card.tier-gold .pt{color:#D4AF37}
+.reward-card h3{font-size:1.1rem;font-weight:700;margin-bottom:4px}
+.reward-card .desc{color:var(--sub);font-size:.88rem;margin-bottom:10px}
+.reward-card .pt{font-family:'Inter',sans-serif;font-size:.85rem;font-weight:700}
+.reward-card .excuse{font-size:.8rem;color:var(--sub);margin-top:4px}
+.reward-condition{background:var(--light-bg);border-radius:12px;padding:20px 24px;font-size:.9rem;margin-bottom:12px}
+.reward-condition ul{list-style:none;margin-top:8px}
+.reward-condition ul li{padding-left:20px;position:relative;margin-bottom:4px;color:var(--sub)}
+.reward-condition ul li::before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:700}
+.reward-note{text-align:center;font-size:.8rem;color:#a1a1aa}
+
+/* ===== ROADMAP ===== */
+.roadmap-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media(max-width:768px){.roadmap-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.roadmap-grid{grid-template-columns:1fr}}
+.roadmap-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:24px 20px;position:relative;border-top:4px solid #e5e7eb}
+.roadmap-card.current{border-color:var(--green);border-top-color:var(--green);box-shadow:0 0 0 3px rgba(34,197,94,.15)}
+.roadmap-card .phase{font-family:'Inter',sans-serif;font-size:.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.05em}
+.roadmap-card h3{font-size:1rem;font-weight:700;margin:6px 0 4px}
+.roadmap-card .date{font-size:.8rem;color:var(--sub);margin-bottom:10px}
+.roadmap-card p{font-size:.82rem;color:var(--sub);line-height:1.6}
+.roadmap-card .rm-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.roadmap-card .rm-tags span{font-size:.7rem;padding:3px 8px;border-radius:100px;background:var(--light-bg);color:var(--sub);border:1px solid #e5e7eb}
+.roadmap-track-label{font-size:.8rem;font-weight:700;color:var(--sub);text-align:center;margin:32px 0 16px;text-transform:uppercase;letter-spacing:.08em}
+.roadmap-tracks{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.roadmap-tracks .track{padding:6px 16px;border-radius:100px;font-size:.8rem;font-weight:600}
+.roadmap-tracks .track.t1{background:#dcfce7;color:var(--green-dark)}
+.roadmap-tracks .track.t2{background:#dbeafe;color:#1d4ed8}
+.roadmap-tracks .track.t3{background:#fef3c7;color:#92400e}
+
+/* ===== FAQ ===== */
+.faq-list{max-width:700px;margin:0 auto}
+.faq-item{border:1px solid #e5e7eb;border-radius:12px;margin-bottom:12px;background:#fff;overflow:hidden}
+.faq-q{padding:18px 24px;font-weight:700;font-size:1rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
+.faq-q::after{content:"+";font-size:1.4rem;font-weight:400;color:var(--sub);transition:transform .3s}
+.faq-item.open .faq-q::after{transform:rotate(45deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .35s ease;padding:0 24px}
+.faq-item.open .faq-a{max-height:200px;padding:0 24px 18px}
+.faq-a p{color:var(--sub);font-size:.9rem;line-height:1.8}
+
+/* ===== CTA BOTTOM ===== */
+.cta-bottom{background:var(--green);text-align:center;padding:80px 20px}
+.cta-bottom h2{color:#fff;font-size:clamp(1.5rem,4vw,2.25rem);margin-bottom:12px}
+.cta-bottom p{color:rgba(255,255,255,.85);font-size:1rem;margin-bottom:32px}
+.cta-bottom .btn{background:#fff;color:var(--green);font-size:1.05rem;padding:16px 36px}
+.cta-bottom .btn:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.15)}
+
+/* ===== FOOTER ===== */
+footer{background:#1A1A1A;color:#fff;padding:48px 0 24px}
+.footer-inner{display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px;margin-bottom:32px;align-items:start}
+@media(max-width:600px){.footer-inner{grid-template-columns:1fr;text-align:center}}
+.footer-logo{font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:6px}
+.footer-tagline{color:#9ca3af;font-size:.85rem}
+.footer-links a{display:block;color:#9ca3af;text-decoration:none;font-size:.85rem;margin-bottom:6px}
+.footer-links a:hover{color:#fff}
+.footer-social a{display:block;color:#9ca3af;text-decoration:none;font-size:.85rem;margin-bottom:6px}
+.footer-social a:hover{color:#fff}
+.footer-copy{text-align:center;color:#6b7280;font-size:.8rem;border-top:1px solid #333;padding-top:20px}
+/* ===== STORY ===== */
+.story-article{max-width:640px;margin:0 auto}
+.story-article p{color:var(--sub);font-size:1.05rem;line-height:2;margin-bottom:22px}
+.story-article .story-lead{font-size:1.15rem;font-weight:700;color:var(--text);line-height:1.8;margin-bottom:28px}
+.story-article .story-em{color:var(--text);font-weight:600}
+.story-article .story-closing{font-size:1.05rem;font-weight:700;color:var(--text);margin-top:32px}
+.story-sign{margin-top:36px;padding-top:20px;border-top:1px solid var(--border);font-size:.9rem;font-weight:600;color:var(--text);text-align:right}
+@media(max-width:600px){
+  .story-article p{font-size:.9rem}
+  .story-article .story-lead{font-size:1.05rem}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo"><img src="05_img/kanji_logo.png" alt="KANJI" width="32" height="32"> KANJI</a>
+    <div class="nav-cta"><a href="app.html" class="btn btn-primary">無料で始める →</a></div>
+    <button class="hamburger" id="hamburger" aria-label="メニュー">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <h1>幹事を、もっと<br><span class="highlight">ラクに。得に。</span></h1>
+    <p class="hero-sub">割り勘計算・PayPay番号収集・支払いリマインドが全自動。<br>幹事がラクになる。参加者も30秒で完了。<br>やるほど特典が貯まる、幹事のためのアプリ。</p>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="num inter">3分</div><div class="label">イベント作成にかかる時間</div></div>
+      <div class="kpi-card"><div class="num inter">0回</div><div class="label">幹事がリマインドする回数</div></div>
+      <div class="kpi-card"><div class="num inter">30秒</div><div class="label">参加者の登録時間</div></div>
+      <div class="kpi-card"><div class="num inter">無料</div><div class="label">基本機能の利用料</div></div>
+    </div>
+    <div class="tags">
+      <span>PayPay番号収集</span><span>割り勘計算</span><span>支払いリマインド自動化</span><span>幹事ポイント</span><span>LINEで完結</span><span>参加者ログイン不要</span>
+    </div>
+    <div class="hero-btns">
+      <a href="app.html" class="btn btn-primary">無料で始める →</a>
+      <a href="#" class="btn btn-outline" id="btnHowTo">ご利用の流れを見る</a>
+    </div>
+  </div>
+</section>
+
+<!-- TAB BAR -->
+<div class="tab-bar-wrapper">
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-btn active" data-tab="pain">幹事の悩み</button>
+    <button class="tab-btn" data-tab="target">活用シーン</button>
+    <button class="tab-btn" data-tab="steps">ご利用の流れ</button>
+    <button class="tab-btn" data-tab="participant">参加者のメリット</button>
+    <button class="tab-btn" data-tab="reward">幹事だけの特典</button>
+    <button class="tab-btn" data-tab="roadmap">今後の展開</button>
+    <button class="tab-btn" data-tab="story">なぜKANJIを作ったか</button>
+    <button class="tab-btn" data-tab="faq">よくあるご質問</button>
+    <div class="cta-tab"><a href="app.html" class="btn btn-primary">無料で始める →</a></div>
+  </div>
+</div>
+
+<!-- TAB PANELS -->
+<main class="container">
+
+  <!-- PAIN -->
+  <div class="tab-panel active" id="panel-pain">
+    <div class="section-title">
+      <h2>「毎回しんどい」— 幹事あるあるの本当のコスト</h2>
+      <p>飲み会の幹事をやるたびに、なぜか損した気分になる。その「なんとなくしんどい」には、ちゃんと理由がある。</p>
+    </div>
+    <div class="pain-num-grid">
+      <div class="pain-num-card"><div class="big inter">30分</div><div class="desc">PayPay番号をLINEで集めるのにかかる平均時間</div><div class="source">※ KANJI調べ</div></div>
+      <div class="pain-num-card"><div class="big inter">3〜5回</div><div class="desc">1イベントで幹事が送るリマインドの平均回数</div><div class="source">※ KANJI調べ</div></div>
+      <div class="pain-num-card"><div class="big inter">¥500〜</div><div class="desc">幹事が立て替えて回収できなかった平均金額/回</div><div class="source">※ KANJI調べ</div></div>
+      <div class="pain-num-card"><div class="big inter">40%</div><div class="desc">「幹事をやりたくない」と感じたことがある人の割合</div><div class="source">※ 独自調査</div></div>
+    </div>
+    <div class="pain-cards">
+      <div class="pain-card">
+        <div class="pain-header"><span class="pain-tag tag-red">PAIN 01</span><h3>集める手間</h3></div>
+        <div class="pain-subtitle">PayPay番号を集めるのが、地味にしんどい</div>
+        <ul>
+          <li>LINEで「PayPay番号教えて」と送ると返信がバラバラ</li>
+          <li>誰が送ってきたか分からなくなる</li>
+          <li>まとめるだけで30分、飲み会前から疲れる</li>
+        </ul>
+        <div class="cost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>放置コスト：1回30分 × 年10回 = <strong>年間5時間</strong>を消費</div>
+      </div>
+      <div class="pain-card">
+        <div class="pain-header"><span class="pain-tag tag-orange">PAIN 02</span><h3>催促の気まずさ</h3></div>
+        <div class="pain-subtitle">「まだ払ってないよ」が言いにくい</div>
+        <ul>
+          <li>友達に催促するのは気まずい</li>
+          <li>リマインドを送るたびに関係性が少し削れる気がする</li>
+          <li>結局自分が立て替えたまま忘れられることも</li>
+        </ul>
+        <div class="cost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>放置コスト：未回収が年間 <strong>¥3,000〜¥10,000</strong> になるケースも</div>
+      </div>
+      <div class="pain-card">
+        <div class="pain-header"><span class="pain-tag tag-yellow">PAIN 03</span><h3>割り勘の計算ミス</h3></div>
+        <div class="pain-subtitle">端数処理でもめる、計算が合わない</div>
+        <ul>
+          <li>飲み会後の疲れた頭で電卓を叩く</li>
+          <li>「1人いくら？」「端数どうする？」の会話が毎回発生</li>
+          <li>計算ミスで自分が損することも</li>
+        </ul>
+        <div class="cost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>放置コスト：毎回10〜15分の計算 + <strong>気まずい空気</strong></div>
+      </div>
+    </div>
+    <div class="solution-box">
+      <div class="sol-headline">KANJIなら、この3つが全部なくなる。</div>
+      <div class="sol-cols">
+        <div class="sol-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          <div class="sol-before">30分かけて番号収集</div>
+          <div class="sol-after">→ URL1つで自動収集</div>
+        </div>
+        <div class="sol-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <div class="sol-before">3〜5回の催促連絡</div>
+          <div class="sol-after">→ 自動リマインドで0回</div>
+        </div>
+        <div class="sol-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M2 10h2"/><path d="M20 10h2"/></svg>
+          <div class="sol-before">電卓で割り勘計算</div>
+          <div class="sol-after">→ ワンタップで自動計算</div>
+        </div>
+      </div>
+      <div class="sol-bottom"><strong>幹事は、当日を楽しむだけ。</strong><br>面倒な作業はKANJIに全部おまかせ。</div>
+    </div>
+  </div>
+
+  <!-- TARGET -->
+  <div class="tab-panel" id="panel-target">
+    <div class="section-title"><h2>こんな人に使ってほしい</h2></div>
+    <div class="target-grid">
+      <div class="target-card">
+        <div class="icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 110 8h-1"/><path d="M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg></div>
+        <h3>アラサーの幹事担当</h3>
+        <p>職場・友人グループで「なぜかいつも幹事になる人」。年に5〜10回は幹事をやっている。ラクになるなら絶対使いたい。</p>
+      </div>
+      <div class="target-card">
+        <div class="icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+        <h3>グループの中心人物</h3>
+        <p>「次どこ行く？」「誰か幹事やって」と言われがちな人。イベントを企画するのは好きだけど、お金の管理は面倒。</p>
+      </div>
+      <div class="target-card">
+        <div class="icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+        <h3>お金の管理が苦手な幹事</h3>
+        <p>立て替えた金額を把握できていない。誰が払ったか払っていないか、LINEを遡って確認している。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEPS -->
+  <div class="tab-panel" id="panel-steps">
+    <div class="section-title"><h2>3ステップで、全部終わる</h2></div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <div class="step-num">STEP 01</div>
+        <h3>イベントを作る（3分）</h3>
+        <p>店名・日時・参加費を入力するだけ。LINEログインで即スタート。</p>
+        <div class="step-arrow">→</div>
+      </div>
+      <div class="step-card">
+        <div class="icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></div>
+        <div class="step-num">STEP 02</div>
+        <h3>URLを友達に送る（1分）</h3>
+        <p>自動生成されたURLをLINEでシェア。参加者はURLを踏むだけ。ログイン不要。</p>
+        <div class="step-arrow">→</div>
+      </div>
+      <div class="step-card">
+        <div class="icon teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        <div class="step-num">STEP 03</div>
+        <h3>あとはKANJIが全部やる（0分）</h3>
+        <p>割り勘計算・PayPay番号収集・未払いリマインドが全自動。幹事は当日を楽しむだけ。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARTICIPANT -->
+  <div class="tab-panel" id="panel-participant">
+    <div class="section-title">
+      <h2>参加者も、30秒で終わる</h2>
+      <p>LINEログイン不要。URLを踏んで、名前と支払い方法を選ぶだけ。</p>
+    </div>
+    <div class="participant-flow">
+      <div class="pf-step">
+        <div class="pf-num">1</div>
+        <span class="pf-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></span>
+        <div class="pf-label">URLを踏む</div>
+        <div class="pf-desc">LINEで届いたリンクをタップ</div>
+      </div>
+      <div class="pf-connector"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="pf-step">
+        <div class="pf-num">2</div>
+        <span class="pf-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></span>
+        <div class="pf-label">名前を入力</div>
+        <div class="pf-desc">ニックネームでOK</div>
+      </div>
+      <div class="pf-connector"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="pf-step">
+        <div class="pf-num">3</div>
+        <span class="pf-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span>
+        <div class="pf-label">支払い方法を選ぶ</div>
+        <div class="pf-desc">PayPay・振込・現金から選択</div>
+      </div>
+      <div class="pf-connector"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="pf-step">
+        <div class="pf-num">4</div>
+        <span class="pf-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        <div class="pf-label">完了</div>
+        <div class="pf-desc">たったこれだけ。30秒。</div>
+      </div>
+    </div>
+    <div class="pay-grid">
+      <div class="pay-card">
+        <div class="paypay-logo"><img src="05_img/paypay.jpg" alt="PayPay" width="56" height="56"></div>
+        <h3>PayPay対応</h3>
+        <p>電話番号を入力するだけ。幹事がそのまま検索して送金できる。</p>
+      </div>
+      <div class="pay-card">
+        <div class="icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M12 3l9 7H3l9-7z"/><path d="M5 10v11"/><path d="M19 10v11"/><path d="M9 10v11"/><path d="M15 10v11"/></svg></div>
+        <h3>銀行振込</h3>
+        <p>幹事の口座情報が自動表示される。</p>
+      </div>
+      <div class="pay-card">
+        <div class="icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M2 10h2"/><path d="M20 10h2"/><path d="M2 14h2"/><path d="M20 14h2"/></svg></div>
+        <h3>現金</h3>
+        <p>当日幹事に渡すだけ。チェックリストで管理。</p>
+      </div>
+    </div>
+    <div class="participant-note">
+      「支払いました」をタップするだけ。リマインドが自動で止まる。幹事にリアルタイム通知。
+    </div>
+  </div>
+
+  <!-- REWARD -->
+  <div class="tab-panel" id="panel-reward">
+    <div class="section-title">
+      <h2>幹事をやるほど、得をする</h2>
+      <p>5万円以上の飲み会を幹事するたびにポイントが貯まる。<br>貯まったポイントで、友達を誘える特典をゲット。</p>
+    </div>
+    <div class="reward-chat">
+      <div class="chat-bubble">
+        <div class="chat-text">次、サウナ行かない？<br>俺が幹事するよ🧖</div>
+      </div>
+      <div class="chat-meta">
+        <div class="chat-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <span class="chat-sender">幹事のあなた</span>
+        <span class="chat-time">今すぐ送れる</span>
+      </div>
+    </div>
+    <div class="reward-grid">
+      <div class="reward-card tier-bronze">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-1.5 0-2.5 1-3 2-.6 1.2-.3 2.5.5 3.5L6 12l1.5 1.5L12 9l4.5 4.5L18 12l-3.5-3.5c.8-1 1.1-2.3.5-3.5-.5-1-1.5-2-3-2z"/><path d="M8 16v5"/><path d="M16 16v5"/><path d="M5 21h14"/></svg></div>
+        <h3>BRONZE</h3>
+        <div class="desc">プライベートサウナ貸切（4〜8人）</div>
+        <div class="pt inter">3pt</div>
+      </div>
+      <div class="reward-card tier-silver">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 19h20L12 2z"/><path d="M12 9v4"/><path d="M7 19l5-7 5 7"/></svg></div>
+        <h3>SILVER</h3>
+        <div class="desc">グランピング・ヴィラ（グループ）</div>
+        <div class="pt inter">5pt</div>
+      </div>
+      <div class="reward-card tier-gold">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9h1"/><path d="M9 13h1"/><path d="M9 17h1"/></svg></div>
+        <h3>GOLD</h3>
+        <div class="desc">高級ヴィラ1泊（グループ）</div>
+        <div class="pt inter">10pt</div>
+      </div>
+    </div>
+    <div class="reward-condition">
+      <strong>ポイント付与条件</strong>
+      <ul>
+        <li>5万円以上の飲み会を幹事として完結させる → 1pt付与</li>
+        <li>KANJI経由で提携店舗を予約した場合のみ対象</li>
+      </ul>
+    </div>
+    <p class="reward-note">※ 幹事特典はPhase 2（2025年後半）より提供開始予定です。現在はコア機能（集金・割り勘・リマインド）を無料でご利用いただけます。</p>
+  </div>
+
+  <!-- ROADMAP -->
+  <div class="tab-panel" id="panel-roadmap">
+    <div class="section-title">
+      <h2>KANJIの今と、これから</h2>
+      <p>「使うたびに、幹事の資産が増えていく」設計で、4つのフェーズで成長します。</p>
+    </div>
+    <div class="roadmap-grid">
+      <div class="roadmap-card current">
+        <div class="phase"><img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454524748/B4UK74oTCYxrZdn2aFUJCd/kanji-phase1-icon-5rmborEoS2fHE3GXMgTbfX.png" width="32" height="32" style="vertical-align:middle;margin-right:8px;" alt=""> Phase 1 現在進行中</div>
+        <h3>割り勘MVP</h3>
+        <div class="date">2026年4月〜6月</div>
+        <p>PayPay番号収集・割り勘計算・集金管理を磨き切る。友達・アラサー幹事層で検証中。</p>
+        <div class="rm-tags"><span>PayPay収集</span><span>割り勘計算</span><span>自動リマインド</span></div>
+      </div>
+      <div class="roadmap-card">
+        <div class="phase"><img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454524748/B4UK74oTCYxrZdn2aFUJCd/kanji-phase2-icon-euU8gHmVGMB8KTYZEaA4UA.png" width="32" height="32" style="vertical-align:middle;margin-right:8px;" alt=""> Phase 2 次のステップ</div>
+        <h3>連絡ツール拡張</h3>
+        <div class="date">2026年7月〜9月</div>
+        <p>招待一斉送信・イベントリマインド・振り返りヒアリングで幹事の運営業務を丸ごとカバー。</p>
+        <div class="rm-tags"><span>招待送信</span><span>自動応答</span><span>振り返り</span></div>
+      </div>
+      <div class="roadmap-card">
+        <div class="phase"><img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454524748/B4UK74oTCYxrZdn2aFUJCd/kanji-phase3-icon-9vDqr7vYN9PuLQkUrLkL2v.png" width="32" height="32" style="vertical-align:middle;margin-right:8px;" alt=""> Phase 3 計画中</div>
+        <h3>幹事だけの特典・提携店舗</h3>
+        <div class="date">2026年10月〜12月</div>
+        <p>提携店舗を獲得し、KANJI経由予約で収益化開始。幹事ポイント制度を導入。</p>
+        <div class="rm-tags"><span>提携店舗</span><span>ポイント</span><span>特典交換</span></div>
+      </div>
+      <div class="roadmap-card">
+        <div class="phase"><img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454524748/B4UK74oTCYxrZdn2aFUJCd/kanji-phase4-icon-oHiTD88hsM2zpcguSrfmyq.png" width="32" height="32" style="vertical-align:middle;margin-right:8px;" alt=""> Phase 4 ビジョン</div>
+        <h3>集客プラットフォーム</h3>
+        <div class="date">2027年〜</div>
+        <p>飲食店・企業からの集客クエストを幹事が受注。採用イベント・フェス・パーティの集客を担うプラットフォームへ。</p>
+        <div class="rm-tags"><span>集客クエスト</span><span>採用イベント</span><span>認定幹事</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STORY -->
+  <div class="tab-panel" id="panel-story" style="background:var(--light-green);border-radius:20px;margin:0 -20px;padding:60px 20px 80px">
+    <div class="section-title">
+      <h2>なぜ、KANJIを作ったのか</h2>
+    </div>
+    <article class="story-article">
+      <p class="story-lead">新卒から10年、未回収のお金が100万円を超えた。<br>それでも、幹事をやめられなかった。</p>
+      <p>催促の連絡が気まずくて、諦めた。割り勘がズレて、自分が多めに払った。準備に時間を使いすぎて、当日ヘトヘトで参加した。</p>
+      <p>稼ぐことだけを考えたら、もっと違うことに時間を使えばいい。</p>
+      <p class="story-em">それでも、やめなかった。</p>
+      <p class="story-em">なぜか。</p>
+      <p>自分がきっかけで、友達と友達が仲良くなる瞬間がある。あの場がなければ出会わなかった二人が、付き合いはじめることがある。仕事につながることがある。</p>
+      <p>そういうポジティブな線が、1本でも多く、太くなっていくこと。<br>それが、私の生きがいだ。</p>
+      <p class="story-em">幹事は、その線を生む仕事だと思っている。</p>
+      <p>でも、疲弊して辞めてしまう人を何人も見てきた。</p>
+      <p>面倒くさい。お金が返ってこない。感謝されない。そのうち「幹事なんてやりたくない」と思うようになる。</p>
+      <p>それは、すごくもったいないと思う。</p>
+      <p>AI時代になるほど、リアルで人を集め、場をつくれる人の価値は上がる。<br>幹事は、これからの時代に一番必要な能力のひとつだ。</p>
+      <p class="story-em">KANJIは、そういう人を一人でも救うために作った。</p>
+      <p>面倒な部分は全部アプリに任せて、「またやりたい」と思えるようにしたい。ポジティブな繋がりをつくれる人が、ちゃんと報われる世界にしたい。</p>
+      <p class="story-closing">幹事がKANJIでより人が繋がる機会を。</p>
+      <div class="story-sign">市原 純</div>
+    </article>
+  </div>
+
+  <!-- FAQ -->
+  <div class="tab-panel" id="panel-faq">
+    <div class="section-title"><h2>よくある質問</h2></div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q">無料で使えますか？</div>
+        <div class="faq-a"><p>はい、基本機能（イベント作成・割り勘計算・PayPay番号収集・リマインド）は完全無料です。</p></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">参加者もLINEログインが必要ですか？</div>
+        <div class="faq-a"><p>不要です。URLを踏んで名前と支払い方法を入力するだけで完了します。</p></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">PayPay以外の支払い方法は使えますか？</div>
+        <div class="faq-a"><p>PayPay・銀行振込・現金の3種類に対応しています。参加者が自分で選べます。</p></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">幹事だけの特典はいつから使えますか？</div>
+        <div class="faq-a"><p>2026年10月〜のPhase 3から提供開始予定です。現在はコア機能を無料でご利用いただけます。</p></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">セキュリティは大丈夫ですか？</div>
+        <div class="faq-a"><p>LINEログインを採用しており、個人情報はLINEの認証基盤で管理されます。PayPay番号（電話番号）は幹事のみ閲覧可能です。</p></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- CTA BOTTOM -->
+<section class="cta-bottom">
+  <div class="container">
+    <h2>まず、使ってみてください。</h2>
+    <p>友達の飲み会で試してみるだけでOK。アカウント登録は30秒。完全無料。</p>
+    <a href="app.html" class="btn">KANJIを始める →</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div>
+        <div class="footer-logo">KANJI</div>
+        <div class="footer-tagline">幹事の憂鬱を、LINEでスマートに。</div>
+      </div>
+      <div class="footer-links">
+        <a href="#">プライバシーポリシー</a>
+        <a href="#">利用規約</a>
+        <a href="#">お問い合わせ</a>
+      </div>
+      <div class="footer-social">
+        <a href="#">Instagram: @kanji_relief</a>
+        <a href="#">Threads: @kanji_relief</a>
+      </div>
+    </div>
+    <div class="footer-copy">© 2026 KANJI</div>
+  </div>
+</footer>
+
+<!-- Mobile tab drawer -->
+<div class="mobile-tab-overlay" id="mobileOverlay"></div>
+<div class="mobile-tab-drawer" id="mobileDrawer">
+  <div class="drawer-title">セクション</div>
+  <a href="#" data-tab="pain" class="active"><span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>幹事の悩み</a>
+  <a href="#" data-tab="target"><span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>活用シーン</a>
+  <a href="#" data-tab="steps"><span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>ご利用の流れ</a>
+  <a href="#" data-tab="participant"><span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>参加者のメリット</a>
+  <a href="#" data-tab="reward"><span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg></span>幹事だけの特典</a>
+  <a href="#" data-tab="roadmap"><span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg></span>今後の展開</a>
+  <a href="#" data-tab="story"><span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>なぜKANJIを作ったか</a>
+  <a href="#" data-tab="faq"><span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>よくあるご質問</a>
+</div>
+
+<script>
+// Tab switching
+const tabBtns = document.querySelectorAll('.tab-btn');
+const panels = document.querySelectorAll('.tab-panel');
+const drawerLinks = document.querySelectorAll('.mobile-tab-drawer a');
+
+function switchTab(tabId) {
+  tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+  panels.forEach(p => p.classList.toggle('active', p.id === 'panel-' + tabId));
+  drawerLinks.forEach(a => a.classList.toggle('active', a.dataset.tab === tabId));
+  // Scroll active tab into view in tab bar
+  const activeBtn = document.querySelector('.tab-btn.active');
+  if (activeBtn) activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  // Scroll to tab bar
+  document.querySelector('.tab-bar-wrapper').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// Mobile drawer
+const hamburger = document.getElementById('hamburger');
+const overlay = document.getElementById('mobileOverlay');
+const drawer = document.getElementById('mobileDrawer');
+
+function openDrawer() { overlay.classList.add('open'); drawer.classList.add('open'); }
+function closeDrawer() { overlay.classList.remove('open'); drawer.classList.remove('open'); }
+
+hamburger.addEventListener('click', () => {
+  if (drawer.classList.contains('open')) closeDrawer(); else openDrawer();
+});
+overlay.addEventListener('click', closeDrawer);
+
+drawerLinks.forEach(a => {
+  a.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchTab(a.dataset.tab);
+    closeDrawer();
+  });
+});
+
+// "使い方を見る" button
+document.getElementById('btnHowTo').addEventListener('click', (e) => {
+  e.preventDefault();
+  switchTab('steps');
+});
+
+// FAQ accordion
+document.querySelectorAll('.faq-q').forEach(q => {
+  q.addEventListener('click', () => {
+    const item = q.parentElement;
+    document.querySelectorAll('.faq-item').forEach(i => { if (i !== item) i.classList.remove('open'); });
+    item.classList.toggle('open');
+  });
+});
+</script>
+</body>
+</html>

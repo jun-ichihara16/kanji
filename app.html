@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KANJI — サービスイメージ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--green:#22C55E;--green-dark:#16A34A;--bg:#FFFFFF;--text:#1A1A1A;--sub:#6B7280;--light-green:#F0FDF4;--border:#E5E7EB;--gray-bg:#F3F4F6;--line:#06C755}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Noto Sans JP','Inter',sans-serif;color:var(--text);background:var(--gray-bg);line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;justify-content:center;align-items:flex-start}
+.inter{font-family:'Inter','Noto Sans JP',sans-serif}
+
+/* Phone frame */
+.phone{width:100%;max-width:390px;min-height:100vh;background:var(--bg);position:relative;display:flex;flex-direction:column;box-shadow:0 0 40px rgba(0,0,0,.08)}
+@media(max-width:390px){.phone{max-width:100%;box-shadow:none}}
+
+/* Header */
+.app-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:100}
+.app-header .back-link{font-size:.8rem;color:var(--sub);text-decoration:none;display:flex;align-items:center;gap:4px;cursor:pointer;background:none;border:none;font-family:inherit}
+.app-header .back-link:hover{color:var(--text)}
+.app-header .logo{font-size:1.2rem;font-weight:800;color:var(--green);display:flex;align-items:center;gap:5px}
+.app-header .logo img{display:block}
+.app-header .badge{font-size:.65rem;color:var(--sub);background:var(--gray-bg);padding:3px 8px;border-radius:100px;font-weight:500}
+
+/* Bottom nav */
+.bottom-nav{display:flex;border-top:1px solid var(--border);background:#fff;position:sticky;bottom:0;z-index:99}
+.bottom-nav button{flex:1;padding:10px 0 12px;font-size:.65rem;font-weight:500;color:var(--sub);background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:all .15s}
+.bottom-nav button svg{width:20px;height:20px}
+.bottom-nav button.active{color:var(--green)}
+
+/* Screens */
+.screen{display:none;flex:1;overflow-y:auto}
+.screen.active{display:flex;flex-direction:column}
+.screen-scroll{flex:1;overflow-y:auto;padding:20px 16px 24px}
+.screen-scroll.no-pad{padding:0}
+
+/* Buttons */
+.btn-main{display:block;width:100%;padding:16px;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;text-align:center;transition:all .2s;font-family:inherit}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:hover{background:var(--green-dark);transform:translateY(-1px)}
+.btn-line{background:var(--line);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px}
+.btn-line:hover{filter:brightness(.95);transform:translateY(-1px)}
+.btn-outline-green{background:transparent;color:var(--green);border:2px solid var(--green)}
+.btn-outline-green:hover{background:var(--light-green)}
+.btn-outline-gray{background:transparent;color:var(--sub);border:2px solid var(--border)}
+.btn-sm{padding:10px 20px;font-size:.85rem;border-radius:10px;width:auto;display:inline-block}
+
+/* Form */
+.form-group{margin-bottom:16px}
+.form-label{display:flex;align-items:center;gap:6px;font-size:.8rem;font-weight:600;color:var(--sub);margin-bottom:6px}
+.form-label svg{width:16px;height:16px}
+.form-input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;font-size:.95rem;font-family:inherit;color:var(--text);background:var(--gray-bg)}
+.form-input:focus{outline:none;border-color:var(--green);background:#fff}
+
+/* URL box */
+.url-box{display:flex;align-items:center;gap:8px;background:var(--gray-bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px}
+.url-box .url-text{flex:1;font-family:'Inter',monospace;font-size:.8rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.url-box .copy-btn{flex-shrink:0;padding:6px 14px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* Participant */
+.participant-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+.summary-card{text-align:center;padding:14px 8px;background:var(--gray-bg);border-radius:10px}
+.summary-card .num{font-family:'Inter',sans-serif;font-size:1.5rem;font-weight:800;color:var(--text)}
+.summary-card .lbl{font-size:.7rem;color:var(--sub);margin-top:2px}
+.participant-list{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.p-card{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border:1px solid var(--border);border-radius:10px}
+.p-card .p-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:#fff;flex-shrink:0}
+.p-card .p-info{flex:1;min-width:0}
+.p-card .p-name{font-size:.85rem;font-weight:600}
+.p-card .p-method{font-size:.7rem;color:var(--sub)}
+.p-card .p-status{flex-shrink:0;font-size:.75rem;font-weight:600;padding:4px 10px;border-radius:100px}
+.p-status.paid{background:#dcfce7;color:var(--green-dark)}
+.p-status.unpaid{background:#fef3c7;color:#92400e}
+.p-card .remind-btn{flex-shrink:0;font-size:.7rem;padding:6px 10px;background:var(--light-green);color:var(--green-dark);border:none;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit}
+
+/* PayPay */
+.paypay-expand-btn{width:100%;padding:14px;border:2px solid var(--green);border-radius:12px;background:var(--light-green);color:var(--green-dark);font-size:.9rem;font-weight:700;cursor:pointer;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit}
+.paypay-list{display:none;background:var(--gray-bg);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.paypay-list.open{display:block}
+.paypay-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border)}
+.paypay-row:last-child{border:none}
+.paypay-row .pp-name{font-size:.85rem;font-weight:600}
+.paypay-row .pp-num{font-family:'Inter',monospace;font-size:.85rem;color:var(--sub)}
+
+/* Event card */
+.event-card{background:var(--light-green);border-radius:16px;padding:24px 20px;margin-bottom:24px}
+.event-card .ev-title{font-size:1.15rem;font-weight:700;margin-bottom:14px}
+.event-card .ev-row{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--sub);margin-bottom:8px}
+.event-card .ev-row svg{width:16px;height:16px;flex-shrink:0;color:var(--green)}
+.event-card .ev-host{margin-top:14px;padding-top:12px;border-top:1px solid rgba(0,0,0,.06);font-size:.85rem;color:var(--sub)}
+
+/* Payment select */
+.pay-options{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.pay-option{display:flex;align-items:center;gap:12px;padding:14px 16px;border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:all .15s}
+.pay-option.selected{border-color:var(--green);background:var(--light-green)}
+.pay-option .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.pay-option.selected .radio{border-color:var(--green);background:var(--green)}
+.pay-option.selected .radio::after{content:"";width:8px;height:8px;border-radius:50%;background:#fff}
+.pay-option .po-text{font-size:.9rem;font-weight:600}
+.pay-option .po-sub{font-size:.75rem;color:var(--sub);font-weight:400}
+
+/* Complete */
+.complete-icon{width:64px;height:64px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+.complete-icon svg{width:32px;height:32px;color:#fff}
+.complete-msg{text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:20px}
+.complete-detail{background:var(--gray-bg);border-radius:12px;padding:16px 20px;margin-bottom:24px;font-size:.88rem;color:var(--sub);line-height:1.8;text-align:center}
+.complete-note{text-align:center;font-size:.78rem;color:var(--sub);margin-top:12px;line-height:1.6}
+.divider{height:1px;background:var(--border);margin:24px 0}
+.section-label{font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:12px}
+.section-sub{font-size:.8rem;color:var(--sub);margin-bottom:12px}
+
+/* Landing */
+.landing-hero{padding:40px 20px 32px;text-align:center;background:linear-gradient(180deg,var(--light-green) 0%,#fff 100%)}
+.landing-hero .hero-logo{display:flex;align-items:center;justify-content:center;gap:8px;font-size:1.5rem;font-weight:800;color:var(--green);margin-bottom:20px}
+.landing-hero .hero-logo img{width:40px;height:40px}
+.landing-hero h1{font-size:1.5rem;font-weight:800;line-height:1.4;margin-bottom:12px}
+.landing-hero h1 .hl{color:var(--green)}
+.landing-hero p{font-size:.88rem;color:var(--sub);line-height:1.7;margin-bottom:28px}
+.landing-features{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 16px 24px}
+.landing-features .feat{text-align:center;padding:16px 8px;background:var(--gray-bg);border-radius:12px}
+.landing-features .feat svg{width:28px;height:28px;color:var(--green);margin-bottom:6px}
+.landing-features .feat span{display:block;font-size:.75rem;font-weight:600;color:var(--text)}
+.landing-bottom{padding:0 16px 32px}
+
+/* Dashboard */
+.dash-greeting{font-size:1.1rem;font-weight:700;margin-bottom:4px}
+.dash-sub{font-size:.85rem;color:var(--sub);margin-bottom:20px}
+.dash-event-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;cursor:pointer;transition:all .15s}
+.dash-event-card:hover{border-color:var(--green);box-shadow:0 2px 12px rgba(34,197,94,.1)}
+.dash-event-card .dec-title{font-size:.95rem;font-weight:700;margin-bottom:8px}
+.dash-event-card .dec-meta{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--sub);margin-bottom:6px}
+.dash-event-card .dec-meta svg{width:14px;height:14px;flex-shrink:0}
+.dash-event-card .dec-bar{display:flex;gap:12px;margin-top:10px}
+.dash-event-card .dec-bar .dec-stat{font-size:.75rem;color:var(--sub)}
+.dash-event-card .dec-bar .dec-stat strong{color:var(--text)}
+.dec-progress{height:4px;background:var(--border);border-radius:4px;margin-top:8px;overflow:hidden}
+.dec-progress .dec-fill{height:100%;background:var(--green);border-radius:4px;transition:width .3s}
+
+/* Step indicator & nav */
+.step-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+.step-dots{display:flex;gap:6px}
+.step-dots .dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:all .25s}
+.step-dots .dot.active{background:var(--green);width:24px;border-radius:4px}
+.step-label{font-size:.75rem;color:var(--sub)}
+.step-nav{display:flex;justify-content:space-between;padding:0 16px 16px}
+.step-nav button{padding:10px 18px;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;border:none;transition:all .2s;font-family:inherit}
+.step-nav .btn-back{background:var(--gray-bg);color:var(--sub)}
+.step-nav .btn-next{background:var(--green);color:#fff}
+.step-nav .btn-next:hover{background:var(--green-dark)}
+.btn-hidden{visibility:hidden}
+
+/* Steps viewport */
+.steps-viewport{flex:1;overflow:hidden}
+.steps-track{display:flex;height:100%;transition:transform .35s ease}
+.step-screen{min-width:100%;padding:20px 16px 32px;overflow-y:auto}
+
+/* Avatar colors */
+.av-1{background:#22C55E}.av-2{background:#3B82F6}.av-3{background:#F97316}.av-4{background:#EF4444}.av-5{background:#8B5CF6}.av-6{background:#EC4899}.av-7{background:#14B8A6}.av-8{background:#F59E0B}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <!-- Header -->
+  <header class="app-header">
+    <button class="back-link" id="globalBack"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> 戻る</button>
+    <span class="logo"><img src="05_img/kanji_logo.png" alt="" width="26" height="26"> KANJI</span>
+    <span class="badge">デモ</span>
+  </header>
+
+  <!-- ===== SCREEN: LANDING ===== -->
+  <div class="screen active" id="screen-landing">
+    <div class="landing-hero">
+      <div class="hero-logo"><img src="05_img/kanji_logo.png" alt="" width="40" height="40"> KANJI</div>
+      <h1>幹事を、もっと<br><span class="hl">ラクに。得に。</span></h1>
+      <p>割り勘計算・PayPay番号収集・<br>支払いリマインドが全自動。</p>
+      <button class="btn-main btn-line" onclick="navigate('dashboard')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.271.173-.508.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+        LINEでログイン
+      </button>
+    </div>
+    <div class="landing-features">
+      <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span>割り勘</span></div>
+      <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg><span>PayPay集金</span></div>
+      <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span>リマインド</span></div>
+    </div>
+    <div class="landing-bottom">
+      <button class="btn-main btn-outline-green" onclick="navigate('guest-1')">参加者として体験する →</button>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN: DASHBOARD ===== -->
+  <div class="screen" id="screen-dashboard">
+    <div class="screen-scroll">
+      <div class="dash-greeting">おかえりなさい、市原さん</div>
+      <div class="dash-sub">あなたのイベント</div>
+      <div class="dash-event-card" onclick="navigate('host-1')">
+        <div class="dec-title">渋谷で忘年会</div>
+        <div class="dec-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>2025年12月20日（土）19:00〜</div>
+        <div class="dec-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>個室居酒屋 鳥貴族 渋谷店</div>
+        <div class="dec-bar">
+          <div class="dec-stat">参加者 <strong>8人</strong></div>
+          <div class="dec-stat">支払い済み <strong style="color:var(--green)">6/8</strong></div>
+        </div>
+        <div class="dec-progress"><div class="dec-fill" style="width:75%"></div></div>
+      </div>
+      <div class="dash-event-card" onclick="navigate('create-1')">
+        <div class="dec-title">新年会（企画中）</div>
+        <div class="dec-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>2026年1月18日（日）18:00〜</div>
+        <div class="dec-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>未定</div>
+        <div class="dec-bar">
+          <div class="dec-stat">参加者 <strong>0人</strong></div>
+        </div>
+        <div class="dec-progress"><div class="dec-fill" style="width:0%"></div></div>
+      </div>
+      <button class="btn-main btn-green" style="margin-top:12px" onclick="navigate('create-1')">
+        <span style="display:flex;align-items:center;justify-content:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新しいイベントを作成</span>
+      </button>
+    </div>
+    <nav class="bottom-nav">
+      <button class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>ホーム</button>
+      <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>イベント</button>
+      <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>マイページ</button>
+    </nav>
+  </div>
+
+  <!-- ===== SCREEN: HOST - EVENT CREATE (Step 1) ===== -->
+  <div class="screen" id="screen-create-1">
+    <div class="step-header"><div class="step-dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div><span class="step-label">STEP 1/3</span></div>
+    <div class="screen-scroll">
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:20px;text-align:center">新しいイベントを作成</div>
+      <div class="form-group">
+        <div class="form-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>イベント名</div>
+        <input class="form-input" value="渋谷で忘年会" readonly>
+      </div>
+      <div class="form-group">
+        <div class="form-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>お店の名前</div>
+        <input class="form-input" value="個室居酒屋 鳥貴族 渋谷店" readonly>
+      </div>
+      <div class="form-group">
+        <div class="form-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>住所・最寄り駅</div>
+        <input class="form-input" value="渋谷駅 徒歩3分" readonly>
+      </div>
+      <div class="form-group">
+        <div class="form-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>日時</div>
+        <input class="form-input" value="2025年12月20日（土）19:00〜" readonly>
+      </div>
+      <div class="form-group">
+        <div class="form-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>参加費（一人あたり）</div>
+        <input class="form-input inter" value="¥4,000" readonly>
+      </div>
+      <div class="form-group">
+        <div class="form-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>幹事からのメモ（任意）</div>
+        <input class="form-input" value="2次会も考えてます！" readonly>
+      </div>
+      <button class="btn-main btn-green" onclick="navigate('create-2')">イベントURLを発行する →</button>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN: HOST - URL SHARE (Step 2) ===== -->
+  <div class="screen" id="screen-create-2">
+    <div class="step-header"><div class="step-dots"><div class="dot"></div><div class="dot active"></div><div class="dot"></div></div><span class="step-label">STEP 2/3</span></div>
+    <div class="step-nav"><button class="btn-back" onclick="navigate('create-1')">← 戻る</button><button class="btn-next" onclick="navigate('host-1')">管理画面へ →</button></div>
+    <div class="screen-scroll">
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:20px;text-align:center">URLを友達に送ろう</div>
+      <div class="url-box">
+        <span class="url-text">https://kanji.app/e/xK9mP2</span>
+        <button class="copy-btn" id="copyBtn">コピー</button>
+      </div>
+      <button class="btn-main btn-line" style="margin-bottom:24px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.271.173-.508.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+        LINEで送る
+      </button>
+      <div class="section-label" style="margin-bottom:4px">参加状況</div>
+      <p style="font-size:.8rem;color:var(--sub);margin-bottom:14px">参加者 <strong style="color:var(--text)">3/8人</strong> 登録済み</p>
+      <div class="participant-list">
+        <div class="p-card"><div class="p-avatar av-1">田</div><div class="p-info"><div class="p-name">田中 太郎</div><div class="p-method">PayPay</div></div><span class="p-status paid">登録済み</span></div>
+        <div class="p-card"><div class="p-avatar av-2">鈴</div><div class="p-info"><div class="p-name">鈴木 花子</div><div class="p-method">銀行振込</div></div><span class="p-status paid">登録済み</span></div>
+        <div class="p-card"><div class="p-avatar av-3">佐</div><div class="p-info"><div class="p-name">佐藤 健</div><div class="p-method">PayPay</div></div><span class="p-status unpaid">未登録</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN: HOST - MANAGE (Step 3) ===== -->
+  <div class="screen" id="screen-host-1">
+    <div class="step-header"><div class="step-dots"><div class="dot"></div><div class="dot"></div><div class="dot active"></div></div><span class="step-label">STEP 3/3</span></div>
+    <div class="screen-scroll">
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:20px;text-align:center">渋谷で忘年会</div>
+      <div class="participant-summary">
+        <div class="summary-card"><div class="num inter">8</div><div class="lbl">参加者</div></div>
+        <div class="summary-card"><div class="num inter" style="color:var(--green)">6</div><div class="lbl">支払い済み</div></div>
+        <div class="summary-card"><div class="num inter" style="color:#F97316">2</div><div class="lbl">未払い</div></div>
+      </div>
+      <div class="participant-list">
+        <div class="p-card"><div class="p-avatar av-1">田</div><div class="p-info"><div class="p-name">田中 太郎</div><div class="p-method">PayPay</div></div><span class="p-status paid">支払い済み</span></div>
+        <div class="p-card"><div class="p-avatar av-2">鈴</div><div class="p-info"><div class="p-name">鈴木 花子</div><div class="p-method">銀行振込</div></div><span class="p-status paid">支払い済み</span></div>
+        <div class="p-card"><div class="p-avatar av-3">佐</div><div class="p-info"><div class="p-name">佐藤 健</div><div class="p-method">PayPay</div></div><span class="p-status unpaid">未払い</span><button class="remind-btn">リマインド</button></div>
+        <div class="p-card"><div class="p-avatar av-4">山</div><div class="p-info"><div class="p-name">山田 美咲</div><div class="p-method">現金</div></div><span class="p-status unpaid">未払い</span><button class="remind-btn">リマインド</button></div>
+        <div class="p-card"><div class="p-avatar av-5">伊</div><div class="p-info"><div class="p-name">伊藤 拓也</div><div class="p-method">PayPay</div></div><span class="p-status paid">支払い済み</span></div>
+        <div class="p-card"><div class="p-avatar av-6">渡</div><div class="p-info"><div class="p-name">渡辺 さくら</div><div class="p-method">PayPay</div></div><span class="p-status paid">支払い済み</span></div>
+        <div class="p-card"><div class="p-avatar av-7">中</div><div class="p-info"><div class="p-name">中村 翔太</div><div class="p-method">銀行振込</div></div><span class="p-status paid">支払い済み</span></div>
+        <div class="p-card"><div class="p-avatar av-8">小</div><div class="p-info"><div class="p-name">小林 あい</div><div class="p-method">現金</div></div><span class="p-status paid">支払い済み</span></div>
+      </div>
+      <button class="paypay-expand-btn" id="paypayToggle">
+        <img src="05_img/paypay.jpg" alt="PayPay" width="24" height="24" style="border-radius:4px"> PayPay番号をまとめて見る
+      </button>
+      <div class="paypay-list" id="paypayList">
+        <div class="paypay-row"><span class="pp-name">田中 太郎</span><span class="pp-num inter">090-1234-5678</span></div>
+        <div class="paypay-row"><span class="pp-name">佐藤 健</span><span class="pp-num inter">090-9876-5432</span></div>
+        <div class="paypay-row"><span class="pp-name">伊藤 拓也</span><span class="pp-num inter">080-1111-2222</span></div>
+        <div class="paypay-row"><span class="pp-name">渡辺 さくら</span><span class="pp-num inter">070-3333-4444</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN: GUEST - EVENT INFO (Step 1) ===== -->
+  <div class="screen" id="screen-guest-1">
+    <div class="step-header"><div class="step-dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div><span class="step-label">STEP 1/3</span></div>
+    <div class="screen-scroll">
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:20px;text-align:center">イベントに参加する</div>
+      <div class="event-card">
+        <div class="ev-title">渋谷で忘年会</div>
+        <div class="ev-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>2025年12月20日（土）19:00〜</div>
+        <div class="ev-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>個室居酒屋 鳥貴族 渋谷店（渋谷駅 徒歩3分）</div>
+        <div class="ev-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>参加費：<strong class="inter" style="color:var(--text)">¥4,000</strong></div>
+        <div class="ev-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>幹事より：2次会も考えてます！</div>
+        <div class="ev-host">幹事：市原 純</div>
+      </div>
+      <button class="btn-main btn-green" onclick="navigate('guest-2')">参加する →</button>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN: GUEST - REGISTER (Step 2) ===== -->
+  <div class="screen" id="screen-guest-2">
+    <div class="step-header"><div class="step-dots"><div class="dot"></div><div class="dot active"></div><div class="dot"></div></div><span class="step-label">STEP 2/3</span></div>
+    <div class="step-nav"><button class="btn-back" onclick="navigate('guest-1')">← 戻る</button><button class="btn-hidden">-</button></div>
+    <div class="screen-scroll">
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:20px;text-align:center">参加情報を入力</div>
+      <div class="form-group">
+        <div class="form-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>お名前</div>
+        <input class="form-input" value="田中 太郎" readonly>
+      </div>
+      <div class="form-label" style="margin-bottom:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>支払い方法を選んでください</div>
+      <div class="pay-options">
+        <div class="pay-option selected"><div class="radio"></div><div><div class="po-text">PayPay</div><div class="po-sub">電話番号で送金</div></div></div>
+        <div class="pay-option"><div class="radio"></div><div><div class="po-text">銀行振込</div><div class="po-sub">口座情報を表示</div></div></div>
+        <div class="pay-option"><div class="radio"></div><div><div class="po-text">現金</div><div class="po-sub">当日手渡し</div></div></div>
+      </div>
+      <div class="form-group">
+        <div class="form-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>PayPay用の電話番号</div>
+        <input class="form-input inter" value="090-1234-5678" readonly>
+      </div>
+      <button class="btn-main btn-green" onclick="navigate('guest-3')">登録する →</button>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN: GUEST - COMPLETE (Step 3) ===== -->
+  <div class="screen" id="screen-guest-3">
+    <div class="step-header"><div class="step-dots"><div class="dot"></div><div class="dot"></div><div class="dot active"></div></div><span class="step-label">STEP 3/3</span></div>
+    <div class="screen-scroll">
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:20px;text-align:center">登録完了！</div>
+      <div class="complete-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="complete-msg">参加登録が完了しました！</div>
+      <div class="complete-detail">
+        渋谷で忘年会<br>
+        2025年12月20日（土）19:00〜<br>
+        参加費：<span class="inter">¥4,000</span>（PayPay）<br><br>
+        幹事の市原さんに通知が届きました。
+      </div>
+      <button class="btn-main btn-line" style="margin-bottom:4px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.271.173-.508.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+        LINEで支払いリマインドを受け取る
+      </button>
+      <div class="complete-note">友達追加すると、支払いリマインドや<br>イベント情報の変更をLINEで受け取れます。</div>
+      <div class="divider"></div>
+      <div class="section-label">支払いが完了したら</div>
+      <div class="section-sub">下のボタンをタップしてください。リマインドが自動で止まります。</div>
+      <button class="btn-main btn-outline-gray" style="display:flex;align-items:center;justify-content:center;gap:8px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        支払いました
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Navigation history
+const history = ['landing'];
+function navigate(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById('screen-' + screenId);
+  if (target) { target.classList.add('active'); history.push(screenId); }
+  updateBackBtn();
+}
+function goBack() {
+  if (history.length > 1) { history.pop(); navigate(history.pop()); }
+}
+function updateBackBtn() {
+  const btn = document.getElementById('globalBack');
+  if (history.length <= 1) { btn.style.visibility = 'hidden'; }
+  else {
+    btn.style.visibility = 'visible';
+    // If going back to landing, show "LPに戻る" with link
+    if (history[history.length - 2] === 'landing' || history.length === 1) {
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> LPに戻る';
+    } else {
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> 戻る';
+    }
+  }
+}
+document.getElementById('globalBack').addEventListener('click', (e) => {
+  e.preventDefault();
+  if (history.length <= 1) { window.location.href = 'index.html'; }
+  else { goBack(); }
+});
+updateBackBtn();
+
+// PayPay toggle
+document.getElementById('paypayToggle').addEventListener('click', () => {
+  document.getElementById('paypayList').classList.toggle('open');
+});
+
+// Copy button
+document.getElementById('copyBtn').addEventListener('click', function() {
+  this.textContent = 'コピー済み!';
+  setTimeout(() => { this.textContent = 'コピー'; }, 2000);
+});
+
+// Payment option select
+document.querySelectorAll('.pay-option').forEach(opt => {
+  opt.addEventListener('click', () => {
+    opt.closest('.pay-options').querySelectorAll('.pay-option').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+  });
+});
+</script>
+</body>
+</html>
