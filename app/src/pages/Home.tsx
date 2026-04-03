@@ -27,7 +27,7 @@ export default function Home() {
       <div className="px-5 pt-10 pb-8 text-center bg-gradient-to-b from-green-light to-white">
         <div className="flex items-center justify-center gap-2 text-2xl font-extrabold text-green mb-5">
           <img src="/kanji/app/img/kanji_logo.png" alt="" width={40} height={40} />
-          KANJI
+          AI KANJI
         </div>
         <h1 className="text-2xl font-extrabold leading-snug mb-3">
           幹事を、もっと<br />
