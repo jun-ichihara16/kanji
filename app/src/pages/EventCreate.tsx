@@ -85,8 +85,8 @@ export default function EventCreate() {
               </div>
               <div>
                 <label className="text-xs font-semibold text-sub mb-1 block">日時</label>
-                <input value={eventDate} onChange={(e) => setEventDate(e.target.value)}
-                  placeholder="例：2026年5月10日（土）" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
+                <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)}
+                  className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-sub mb-1 block">メモ（任意）</label>
