@@ -13,7 +13,7 @@ const TABS = ['参加者', 'PayPay', '立替', '精算'] as const
 export default function EventManage() {
   const { id } = useParams<{ id: string }>()
   const {
-    fetchEventById, fetchParticipants, togglePaid,
+    fetchEventById, fetchParticipants, addParticipant, togglePaid,
     fetchAdvances, addAdvance, deleteAdvance,
   } = useEvent()
 
@@ -23,6 +23,8 @@ export default function EventManage() {
   const [settlements, setSettlements] = useState<Settlement[]>([])
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>('参加者')
   const [loading, setLoading] = useState(true)
+  const [newName, setNewName] = useState('')
+  const [addingParticipant, setAddingParticipant] = useState(false)
 
   const load = async () => {
     if (!id) return
@@ -38,6 +40,20 @@ export default function EventManage() {
   }
 
   useEffect(() => { load() }, [id])
+
+  const handleAddParticipant = async () => {
+    if (!id || !newName.trim()) return
+    setAddingParticipant(true)
+    const { data: newP } = await addParticipant(id, {
+      name: newName.trim(),
+      payment_method: 'cash',
+    })
+    if (newP) {
+      setParticipants((prev) => [...prev, newP])
+      setNewName('')
+    }
+    setAddingParticipant(false)
+  }
 
   const handleTogglePaid = async (p: Participant) => {
     await togglePaid(p.id, !p.is_paid)
@@ -138,6 +154,29 @@ export default function EventManage() {
                 <p className="text-center py-8 text-sub text-sm">まだ参加者がいません</p>
               )}
             </div>
+            {/* 参加者追加フォーム */}
+            <div className="flex gap-2 mb-4">
+              <input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="参加者の名前を入力"
+                className="flex-1 p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newName.trim()) {
+                    e.preventDefault()
+                    handleAddParticipant()
+                  }
+                }}
+              />
+              <button
+                onClick={handleAddParticipant}
+                disabled={!newName.trim() || addingParticipant}
+                className="shrink-0 px-4 py-3 bg-green text-white text-sm font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
+              >
+                追加
+              </button>
+            </div>
+
             <div className="bg-gray-bg rounded-xl p-3 mb-3">
               <p className="text-xs text-sub mb-2">参加者URL（LINEで共有）</p>
               <div className="flex gap-2">

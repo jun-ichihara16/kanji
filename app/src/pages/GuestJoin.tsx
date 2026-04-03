@@ -5,7 +5,7 @@ import { calculateSettlements, Advance } from '../lib/settle'
 
 export default function GuestJoin() {
   const { slug } = useParams<{ slug: string }>()
-  const { fetchEventBySlug, fetchParticipants, fetchAdvances, addAdvance } = useEvent()
+  const { fetchEventBySlug, fetchParticipants, addParticipant, fetchAdvances, addAdvance } = useEvent()
 
   const [event, setEvent] = useState<Event | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
@@ -20,6 +20,11 @@ export default function GuestJoin() {
   const [targetNames, setTargetNames] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+
+  // 参加者登録
+  const [joinName, setJoinName] = useState('')
+  const [joining, setJoining] = useState(false)
+  const [joined, setJoined] = useState(false)
 
   const participantNames = useMemo(() => participants.map((p) => p.name), [participants])
 
@@ -49,6 +54,21 @@ export default function GuestJoin() {
       setLoading(false)
     })
   }, [slug])
+
+  const handleJoin = async () => {
+    if (!event || !joinName.trim()) return
+    setJoining(true)
+    const { data: newP } = await addParticipant(event.id, {
+      name: joinName.trim(),
+      payment_method: 'cash',
+    })
+    if (newP) {
+      setParticipants((prev) => [...prev, newP])
+      setJoinName('')
+      setJoined(true)
+    }
+    setJoining(false)
+  }
 
   const toggleTarget = (name: string) => {
     setTargetNames((prev) =>
@@ -131,6 +151,42 @@ export default function GuestJoin() {
         <div className="text-xs text-sub mt-3 pt-3 border-t border-black/5">
           参加者：{participantNames.join('、') || 'なし'}
         </div>
+      </div>
+
+      {/* 参加者登録 */}
+      <div className="px-4 mt-6">
+        <h2 className="text-base font-bold mb-3 flex items-center gap-2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          参加する
+        </h2>
+        {joined ? (
+          <div className="bg-green-light border border-green/20 rounded-xl p-4 text-center">
+            <div className="text-green-dark font-bold text-sm mb-1">参加登録しました！</div>
+            <p className="text-xs text-sub">下の立替フォームから費用を登録できます。</p>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              value={joinName}
+              onChange={(e) => setJoinName(e.target.value)}
+              placeholder="あなたの名前を入力"
+              className="flex-1 p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && joinName.trim()) {
+                  e.preventDefault()
+                  handleJoin()
+                }
+              }}
+            />
+            <button
+              onClick={handleJoin}
+              disabled={!joinName.trim() || joining}
+              className="shrink-0 px-5 py-3 bg-green text-white text-sm font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
+            >
+              {joining ? '...' : '参加'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 立替え登録フォーム */}
