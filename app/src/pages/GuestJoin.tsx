@@ -448,29 +448,40 @@ export default function GuestJoin() {
                           ¥{s.amount.toLocaleString()}
                         </div>
                         {payee?.paypay_phone && (
-                          <div className="mt-2 flex items-center gap-2">
-                            <div className="flex-1 flex items-center gap-1.5 text-xs text-sub">
+                          <div className="mt-3 bg-gray-bg rounded-xl p-3">
+                            <div className="flex items-center gap-1.5 text-xs text-sub mb-2">
                               <img src="/kanji/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
-                              PayPay: <span className="font-inter">{payee.paypay_phone}</span>
+                              PayPay番号: <span className="font-inter font-semibold text-[#1A1A1A]">{payee.paypay_phone}</span>
                             </div>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(payee.paypay_phone!)
-                                const btn = document.getElementById(`copy-pp-${i}`)
-                                if (btn) { btn.textContent = 'コピー済み'; setTimeout(() => { btn.textContent = '番号コピー' }, 1500) }
-                              }}
-                              id={`copy-pp-${i}`}
-                              className="text-xs bg-green-light text-green-dark font-semibold px-2.5 py-1 rounded-lg hover:bg-green/10 transition"
-                            >
-                              番号コピー
-                            </button>
-                            <a
-                              href="paypay://"
-                              className="text-xs bg-red-50 text-red-600 font-semibold px-2.5 py-1 rounded-lg hover:bg-red-100 transition flex items-center gap-1 no-underline"
-                            >
-                              <img src="/kanji/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" />
-                              PayPayを開く
-                            </a>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(payee.paypay_phone!)
+                                  const el = document.getElementById(`step-${i}`)
+                                  if (el) { el.classList.add('done') }
+                                }}
+                                id={`copy-btn-${i}`}
+                                className="flex-1 py-2.5 bg-green text-white text-xs font-bold rounded-lg hover:bg-green-dark transition flex items-center justify-center gap-1"
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                                <span id={`copy-text-${i}`}>STEP1: 番号をコピー</span>
+                              </button>
+                              <a
+                                href="paypay://"
+                                onClick={() => {
+                                  const el = document.getElementById(`copy-text-${i}`)
+                                  if (el && !el.textContent?.includes('コピー済み')) {
+                                    navigator.clipboard.writeText(payee.paypay_phone!)
+                                    el.textContent = 'コピー済み ✓'
+                                  }
+                                }}
+                                className="flex-1 py-2.5 bg-[#FF0033] text-white text-xs font-bold rounded-lg hover:brightness-90 transition flex items-center justify-center gap-1 no-underline"
+                              >
+                                <img src="/kanji/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded brightness-200" style={{filter:'brightness(10)'}} />
+                                STEP2: PayPayで送金
+                              </a>
+                            </div>
+                            <p className="text-[10px] text-sub mt-2 text-center">番号をコピー → PayPayアプリで検索して送金</p>
                           </div>
                         )}
                       </div>
