@@ -48,10 +48,16 @@ jobs:
           cp terms.html _site/
           cp -r 05_img _site/
           cp -r 04_brand _site/
-          # Copy React build + SPA 404 fallback
+          # Copy React build
           cp -r app/dist/* _site/app/
-          cp _site/app/404.html _site/app/auth/callback/index.html 2>/dev/null; mkdir -p _site/app/auth/callback && cp app/public/404.html _site/app/auth/callback/index.html
-          cp app/public/404.html _site/app/404.html
+          # SPA fallback: copy index.html to all routes
+          cp _site/app/index.html _site/app/404.html
+          mkdir -p _site/app/auth/callback
+          cp _site/app/index.html _site/app/auth/callback/index.html
+          mkdir -p _site/app/dashboard
+          cp _site/app/index.html _site/app/dashboard/index.html
+          mkdir -p _site/app/events/new
+          cp _site/app/index.html _site/app/events/new/index.html
 
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
