@@ -26,7 +26,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           ) : (
             <span className="text-[10px] text-sub bg-gray-bg px-2 py-0.5 rounded-full">
-              デモ
+              β版
             </span>
           )}
         </header>
