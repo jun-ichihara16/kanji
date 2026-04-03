@@ -453,35 +453,28 @@ export default function GuestJoin() {
                               <img src="/kanji/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
                               PayPay番号: <span className="font-inter font-semibold text-[#1A1A1A]">{payee.paypay_phone}</span>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-1.5">
                               <button
                                 onClick={() => {
                                   navigator.clipboard.writeText(payee.paypay_phone!)
-                                  const el = document.getElementById(`step-${i}`)
-                                  if (el) { el.classList.add('done') }
+                                  const el = document.getElementById(`copy-text-${i}`)
+                                  if (el) { el.textContent = 'コピー済み ✓'; setTimeout(() => { el.textContent = '番号をコピー' }, 2000) }
                                 }}
-                                id={`copy-btn-${i}`}
-                                className="flex-1 py-2.5 bg-green text-white text-xs font-bold rounded-lg hover:bg-green-dark transition flex items-center justify-center gap-1"
+                                className="flex-1 py-2.5 bg-green text-white text-xs font-bold rounded-lg hover:bg-green-dark transition text-center"
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                                <span id={`copy-text-${i}`}>STEP1: 番号をコピー</span>
+                                <span id={`copy-text-${i}`}>番号をコピー</span>
                               </button>
+                              <span className="text-sub text-xs">▶</span>
                               <a
                                 href="paypay://"
                                 onClick={() => {
-                                  const el = document.getElementById(`copy-text-${i}`)
-                                  if (el && !el.textContent?.includes('コピー済み')) {
-                                    navigator.clipboard.writeText(payee.paypay_phone!)
-                                    el.textContent = 'コピー済み ✓'
-                                  }
+                                  navigator.clipboard.writeText(payee.paypay_phone!)
                                 }}
-                                className="flex-1 py-2.5 bg-[#FF0033] text-white text-xs font-bold rounded-lg hover:brightness-90 transition flex items-center justify-center gap-1 no-underline"
+                                className="flex-1 py-2.5 bg-[#FF0033] text-white text-xs font-bold rounded-lg hover:brightness-90 transition text-center no-underline"
                               >
-                                <img src="/kanji/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded brightness-200" style={{filter:'brightness(10)'}} />
-                                STEP2: PayPayで送金
+                                PayPayで送金
                               </a>
                             </div>
-                            <p className="text-[10px] text-sub mt-2 text-center">番号をコピー → PayPayアプリで検索して送金</p>
                           </div>
                         )}
                       </div>
