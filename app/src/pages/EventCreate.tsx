@@ -81,14 +81,14 @@ export default function EventCreate() {
                   placeholder="例：居酒屋○○ 渋谷店" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-sub mb-1 block">住所・最寄り駅</label>
+                <label className="text-xs font-semibold text-sub mb-1 block">最寄り駅</label>
                 <input value={venueAddress} onChange={(e) => setVenueAddress(e.target.value)}
-                  placeholder="例：渋谷駅 徒歩5分" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
+                  placeholder="例：渋谷駅" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-sub mb-1 block">日時</label>
                 <input value={eventDate} onChange={(e) => setEventDate(e.target.value)}
-                  placeholder="例：2026年5月10日（土）19:00〜" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
+                  placeholder="例：2026年5月10日（土）" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-sub mb-1 block">参加費（一人あたり）</label>
