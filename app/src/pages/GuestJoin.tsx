@@ -484,60 +484,71 @@ export default function GuestJoin() {
                 <h3 className="text-sm font-bold mb-3">精算方法</h3>
                 <div className="space-y-2.5 mb-4">
                   {settlements.map((s, i) => {
-                    const payee = participants.find((p) => p.name === s.to && p.payment_method === 'paypay')
+                    const key = `${s.from}-${s.to}`
+                    const isSettled = !!settledMap[key]
+                    const payee = participants.find((p) => p.name === s.to)
+                    const isPayPay = payee?.payment_method === 'paypay' && payee?.paypay_phone
                     return (
-                      <div key={i} className={`bg-white border rounded-xl p-4 transition ${settledMap[`${s.from}-${s.to}`] ? 'border-green/30 bg-green-light/30' : 'border-border'}`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="font-semibold">{s.from}</span>
+                      <div key={i} className={`border rounded-xl overflow-hidden transition ${isSettled ? 'bg-gray-bg/50 border-border opacity-60' : 'bg-white border-border'}`}>
+                        <div className="p-4">
+                          <div className="flex items-center gap-2 mb-1 text-sm">
+                            <span className={`font-semibold ${isSettled ? 'text-sub' : ''}`}>{s.from}</span>
                             <span className="text-sub">→</span>
-                            <span className="font-semibold">{s.to}</span>
+                            <span className={`font-semibold ${isSettled ? 'text-sub' : ''}`}>{s.to}</span>
+                            {payee && (
+                              <span className="text-xs text-sub ml-auto">
+                                {payee.payment_method === 'paypay' && 'PayPay'}
+                                {payee.payment_method === 'cash' && '現金'}
+                                {payee.payment_method === 'bank' && '振込'}
+                              </span>
+                            )}
                           </div>
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={!!settledMap[`${s.from}-${s.to}`]}
-                              onChange={() => setSettledMap((prev) => ({ ...prev, [`${s.from}-${s.to}`]: !prev[`${s.from}-${s.to}`] }))}
-                              className="w-4 h-4 accent-green"
-                            />
-                            <span className={`text-xs font-semibold ${settledMap[`${s.from}-${s.to}`] ? 'text-green' : 'text-sub'}`}>
-                              {settledMap[`${s.from}-${s.to}`] ? '精算済み' : '未精算'}
-                            </span>
-                          </label>
-                        </div>
-                        <div className={`font-inter text-xl font-extrabold ${settledMap[`${s.from}-${s.to}`] ? 'text-sub line-through' : 'text-green'}`}>
-                          ¥{s.amount.toLocaleString()}
-                        </div>
-                        {payee?.paypay_phone && (
-                          <div className="mt-3 bg-gray-bg rounded-xl p-3">
-                            <div className="flex items-center gap-1.5 text-xs text-sub mb-2">
-                              <img src="/kanji/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
-                              PayPay番号: <span className="font-inter font-semibold text-[#1A1A1A]">{payee.paypay_phone}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(payee.paypay_phone!)
-                                  const el = document.getElementById(`copy-text-${i}`)
-                                  if (el) { el.textContent = 'コピー済み ✓'; setTimeout(() => { el.textContent = '番号をコピー' }, 2000) }
-                                }}
-                                className="flex-1 py-2.5 bg-green text-white text-xs font-bold rounded-lg hover:bg-green-dark transition text-center"
-                              >
-                                <span id={`copy-text-${i}`}>番号をコピー</span>
-                              </button>
-                              <span className="text-sub text-xs">▶</span>
-                              <a
-                                href="paypay://"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(payee.paypay_phone!)
-                                }}
-                                className="flex-1 py-2.5 bg-[#FF0033] text-white text-xs font-bold rounded-lg hover:brightness-90 transition text-center no-underline"
-                              >
-                                PayPayで送金
-                              </a>
-                            </div>
+                          <div className={`font-inter text-xl font-extrabold ${isSettled ? 'text-sub line-through' : 'text-green'}`}>
+                            ¥{s.amount.toLocaleString()}
                           </div>
-                        )}
+
+                          {/* PayPay送金UI（PayPayの人のみ・未精算時のみ） */}
+                          {isPayPay && !isSettled && (
+                            <div className="mt-3 bg-gray-bg rounded-xl p-3">
+                              <div className="flex items-center gap-1.5 text-xs text-sub mb-2">
+                                <img src="/kanji/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
+                                PayPay番号: <span className="font-inter font-semibold text-[#1A1A1A]">{payee.paypay_phone}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(payee.paypay_phone!)
+                                    const el = document.getElementById(`copy-text-${i}`)
+                                    if (el) { el.textContent = 'コピー済み ✓'; setTimeout(() => { el.textContent = '番号をコピー' }, 2000) }
+                                  }}
+                                  className="flex-1 py-2.5 bg-green text-white text-xs font-bold rounded-lg hover:bg-green-dark transition text-center"
+                                >
+                                  <span id={`copy-text-${i}`}>番号をコピー</span>
+                                </button>
+                                <span className="text-sub text-xs">▶</span>
+                                <a
+                                  href="paypay://"
+                                  onClick={() => { navigator.clipboard.writeText(payee.paypay_phone!) }}
+                                  className="flex-1 py-2.5 bg-[#FF0033] text-white text-xs font-bold rounded-lg hover:brightness-90 transition text-center no-underline"
+                                >
+                                  PayPayで送金
+                                </a>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 精算完了ボタン */}
+                        <button
+                          onClick={() => setSettledMap((prev) => ({ ...prev, [key]: !prev[key] }))}
+                          className={`w-full py-3 text-sm font-bold border-t transition ${
+                            isSettled
+                              ? 'bg-gray-bg text-sub border-border'
+                              : 'bg-green-light text-green-dark border-green/20 hover:bg-green/10'
+                          }`}
+                        >
+                          {isSettled ? '✓ 精算済み（タップで取り消し）' : '精算完了にする'}
+                        </button>
                       </div>
                     )
                   })}
