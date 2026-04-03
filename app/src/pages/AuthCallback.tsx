@@ -1,17 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { exchangeLineCode, setLocalUser } from '../lib/auth'
+import { setLocalUser } from '../lib/auth'
 
 export default function AuthCallback() {
   const navigate = useNavigate()
   const [status, setStatus] = useState('ログイン中...')
-
-  const [processing, setProcessing] = useState(false)
+  const processed = useRef(false)
 
   useEffect(() => {
-    // StrictModeの2回レンダリング対策
-    if (processing) return
-    setProcessing(true)
+    if (processed.current) return
+    processed.current = true
 
     const handleCallback = async () => {
       const params = new URLSearchParams(window.location.search)
@@ -20,21 +18,19 @@ export default function AuthCallback() {
       const error = params.get('error')
       const savedState = sessionStorage.getItem('line_oauth_state')
 
-      console.log('Callback params:', { code: !!code, state, savedState, error })
+      console.log('[AuthCallback] params:', { code: code?.substring(0, 10), state, savedState, error })
 
-      // エラーチェック
       if (error) {
-        console.error('LINE auth error:', error, params.get('error_description'))
+        console.error('[AuthCallback] LINE error:', error)
         setStatus('ログインがキャンセルされました')
-        setTimeout(() => navigate('/', { replace: true }), 1500)
+        setTimeout(() => { window.location.href = '/kanji/app/' }, 1500)
         return
       }
 
-      // state検証（savedStateがnullの場合はスキップ＝2回目のレンダリング）
       if (savedState && state !== savedState) {
-        console.error('State mismatch:', { state, savedState })
-        setStatus('認証エラー（state不一致）')
-        setTimeout(() => navigate('/', { replace: true }), 1500)
+        console.error('[AuthCallback] State mismatch')
+        setStatus('認証エラー')
+        setTimeout(() => { window.location.href = '/kanji/app/' }, 1500)
         return
       }
 
@@ -42,27 +38,53 @@ export default function AuthCallback() {
 
       if (!code) {
         setStatus('認証コードが見つかりません')
-        setTimeout(() => navigate('/', { replace: true }), 1500)
+        setTimeout(() => { window.location.href = '/kanji/app/' }, 1500)
         return
       }
 
-      // Edge Functionでトークン交換
       setStatus('認証中...')
-      const { user, error: exchangeError } = await exchangeLineCode(code)
 
-      if (user && !exchangeError) {
-        setLocalUser(user)
-        console.log('Login success:', user)
-        navigate('/dashboard', { replace: true })
-      } else {
-        console.error('Token exchange failed:', exchangeError)
-        setStatus('ログインに失敗しました')
-        setTimeout(() => navigate('/', { replace: true }), 2000)
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+        const redirectUri = window.location.origin + '/kanji/app/auth/callback'
+
+        console.log('[AuthCallback] Calling Edge Function...')
+
+        const res = await fetch(`${supabaseUrl}/functions/v1/line-auth`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+          },
+          body: JSON.stringify({ code, redirectUri }),
+        })
+
+        const data = await res.json()
+        console.log('[AuthCallback] Edge Function response:', res.status, data)
+
+        if (res.ok && data.user) {
+          setLocalUser(data.user)
+          setStatus('ログイン成功！')
+          console.log('[AuthCallback] User saved, redirecting...')
+          // Use window.location for full page navigation (more reliable on GitHub Pages)
+          window.location.href = '/kanji/app/dashboard'
+          return
+        }
+
+        // Edge Function failed - show error detail
+        console.error('[AuthCallback] Edge Function error:', data)
+        setStatus(`エラー: ${data.error || res.status}`)
+        setTimeout(() => { window.location.href = '/kanji/app/' }, 3000)
+      } catch (e: any) {
+        console.error('[AuthCallback] Network error:', e)
+        setStatus('通信エラーが発生しました')
+        setTimeout(() => { window.location.href = '/kanji/app/' }, 3000)
       }
     }
 
     handleCallback()
-  }, [navigate])
+  }, [])
 
   return (
     <div className="flex-1 flex items-center justify-center">
