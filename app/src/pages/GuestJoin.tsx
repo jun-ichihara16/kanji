@@ -344,41 +344,37 @@ export default function GuestJoin() {
 
               <div className="mb-3">
                 <label className="text-xs font-semibold text-sub mb-1 block">割り勘対象</label>
-                <div className="flex gap-2 mb-2">
-                  <button
-                    onClick={() => setSplitAll(true)}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
-                      splitAll ? 'border-green bg-green-light text-green-dark' : 'border-border text-sub'
-                    }`}
-                  >
-                    全員
-                  </button>
-                  <button
-                    onClick={() => { setSplitAll(false); setTargetNames([...participantNames]) }}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
-                      !splitAll ? 'border-green bg-green-light text-green-dark' : 'border-border text-sub'
-                    }`}
-                  >
-                    選択する
-                  </button>
+                <label className="flex items-center gap-2 p-3 bg-white border border-border rounded-xl mb-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={splitAll}
+                    onChange={() => { setSplitAll(true); setTargetNames([]) }}
+                    className="w-4 h-4 accent-green"
+                  />
+                  <span className="text-sm font-semibold">全員で割り勘</span>
+                </label>
+                {!splitAll && participantNames.length === 0 && (
+                  <p className="text-xs text-red-400">先に「情報」タブで参加者を登録してください</p>
+                )}
+                <div className="space-y-1.5">
+                  {participantNames.map((n) => (
+                    <label key={n} className="flex items-center gap-2 p-2.5 bg-white border border-border rounded-xl cursor-pointer hover:border-green/50 transition">
+                      <input
+                        type="checkbox"
+                        checked={splitAll || targetNames.includes(n)}
+                        disabled={splitAll}
+                        onChange={() => { if (splitAll) { setSplitAll(false); setTargetNames([n]) } else { toggleTarget(n) } }}
+                        className="w-4 h-4 accent-green"
+                      />
+                      <span className={`text-sm ${splitAll ? 'text-sub' : 'font-medium'}`}>{n}</span>
+                    </label>
+                  ))}
                 </div>
-                {!splitAll && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {participantNames.map((n) => (
-                      <button
-                        key={n}
-                        onClick={() => toggleTarget(n)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-                          targetNames.includes(n)
-                            ? 'bg-green text-white border-green'
-                            : 'bg-gray-bg text-sub border-border'
+                {!splitAll && targetNames.length > 0 && (
+                  <p className="text-xs text-sub mt-1.5">{targetNames.length}人選択中</p>
+                )}
                         }`}
                       >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
               <button
