@@ -93,5 +93,7 @@ create policy "advances_host_all" on advances
   with check (
     auth.uid() = (select host_id from events where id = event_id)
   );
+create policy "advances_insert_public" on advances
+  for insert with check (true);
 create policy "advances_select_public" on advances
   for select using (true);
