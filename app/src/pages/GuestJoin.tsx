@@ -16,9 +16,11 @@ export default function GuestJoin() {
 
   // 参加者登録
   const [joinName, setJoinName] = useState('')
+  const [joinPaypay, setJoinPaypay] = useState('')
   const [joining, setJoining] = useState(false)
   const [editingPId, setEditingPId] = useState<string | null>(null)
   const [editPName, setEditPName] = useState('')
+  const [editPPaypay, setEditPPaypay] = useState('')
 
   // 立替フォーム
   const [payerName, setPayerName] = useState('')
@@ -64,19 +66,30 @@ export default function GuestJoin() {
     setJoining(true)
     const { data: newP } = await addParticipant(event.id, {
       name: joinName.trim(),
-      payment_method: 'cash',
+      payment_method: joinPaypay.trim() ? 'paypay' : 'cash',
+      paypay_phone: joinPaypay.trim() || undefined,
     })
     if (newP) {
       setParticipants((prev) => [...prev, newP])
       setJoinName('')
+      setJoinPaypay('')
     }
     setJoining(false)
   }
 
   const handleEditParticipant = async (p: Participant) => {
     if (!editPName.trim()) { setEditingPId(null); return }
-    await supabase.from('participants').update({ name: editPName.trim() }).eq('id', p.id)
-    setParticipants((prev) => prev.map((pp) => pp.id === p.id ? { ...pp, name: editPName.trim() } : pp))
+    await supabase.from('participants').update({
+      name: editPName.trim(),
+      paypay_phone: editPPaypay.trim() || null,
+      payment_method: editPPaypay.trim() ? 'paypay' : 'cash',
+    }).eq('id', p.id)
+    setParticipants((prev) => prev.map((pp) => pp.id === p.id ? {
+      ...pp,
+      name: editPName.trim(),
+      paypay_phone: editPPaypay.trim() || null,
+      payment_method: editPPaypay.trim() ? 'paypay' : 'cash',
+    } : pp))
     setEditingPId(null)
   }
 
@@ -198,25 +211,43 @@ export default function GuestJoin() {
                 {participants.map((p) => (
                   <div key={p.id} className="flex items-center gap-2 p-2.5 bg-white border border-border rounded-xl text-sm">
                     {editingPId === p.id ? (
-                      <>
+                      <div className="flex-1 space-y-2">
                         <input
                           value={editPName}
                           onChange={(e) => setEditPName(e.target.value)}
-                          className="flex-1 p-1.5 border border-green rounded-lg text-sm focus:outline-none"
+                          placeholder="名前"
+                          className="w-full p-2 border border-green rounded-lg text-sm focus:outline-none"
                           autoFocus
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleEditParticipant(p); if (e.key === 'Escape') setEditingPId(null) }}
+                          onKeyDown={(e) => { if (e.key === 'Escape') setEditingPId(null) }}
                         />
-                        <button onClick={() => handleEditParticipant(p)} className="text-xs text-green font-bold">保存</button>
-                        <button onClick={() => setEditingPId(null)} className="text-xs text-sub">取消</button>
-                      </>
+                        <input
+                          value={editPPaypay}
+                          onChange={(e) => setEditPPaypay(e.target.value)}
+                          placeholder="PayPay番号（任意）"
+                          type="tel"
+                          className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter"
+                        />
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEditParticipant(p)} className="text-xs bg-green text-white font-bold px-3 py-1.5 rounded-lg">保存</button>
+                          <button onClick={() => setEditingPId(null)} className="text-xs text-sub px-3 py-1.5">取消</button>
+                        </div>
+                      </div>
                     ) : (
                       <>
                         <div className="w-7 h-7 rounded-full bg-green/10 text-green flex items-center justify-center text-xs font-bold shrink-0">
                           {p.name.charAt(0)}
                         </div>
-                        <span className="font-medium flex-1">{p.name}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm">{p.name}</div>
+                          {p.paypay_phone && (
+                            <div className="text-xs text-sub font-inter flex items-center gap-1">
+                              <img src="/kanji/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" />
+                              {p.paypay_phone}
+                            </div>
+                          )}
+                        </div>
                         <button
-                          onClick={() => { setEditingPId(p.id); setEditPName(p.name) }}
+                          onClick={() => { setEditingPId(p.id); setEditPName(p.name); setEditPPaypay(p.paypay_phone || '') }}
                           className="text-xs text-sub hover:text-green"
                         >
                           編集
@@ -238,20 +269,28 @@ export default function GuestJoin() {
 
             {/* 参加登録 */}
             <h3 className="text-sm font-bold mb-2">参加する</h3>
-            <div className="flex gap-2">
-              <input
-                value={joinName}
-                onChange={(e) => setJoinName(e.target.value)}
-                placeholder="あなたの名前"
-                className="flex-1 p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
-                onKeyDown={(e) => { if (e.key === 'Enter' && joinName.trim()) handleJoin() }}
-              />
+            <div className="bg-white border border-border rounded-2xl p-4">
+              <div className="space-y-2 mb-3">
+                <input
+                  value={joinName}
+                  onChange={(e) => setJoinName(e.target.value)}
+                  placeholder="名前"
+                  className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
+                />
+                <input
+                  value={joinPaypay}
+                  onChange={(e) => setJoinPaypay(e.target.value)}
+                  placeholder="PayPay番号 / 電話番号（任意）"
+                  type="tel"
+                  className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
+                />
+              </div>
               <button
                 onClick={handleJoin}
                 disabled={!joinName.trim() || joining}
-                className="shrink-0 px-5 py-3 bg-green text-white text-sm font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
+                className="w-full py-3 bg-green text-white text-sm font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
               >
-                {joining ? '...' : '参加'}
+                {joining ? '登録中...' : '参加する'}
               </button>
             </div>
           </>
