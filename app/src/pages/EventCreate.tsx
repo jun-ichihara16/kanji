@@ -13,7 +13,6 @@ export default function EventCreate() {
   const [venueName, setVenueName] = useState('')
   const [venueAddress, setVenueAddress] = useState('')
   const [eventDate, setEventDate] = useState('')
-  const [feePerPerson, setFeePerPerson] = useState('')
   const [memo, setMemo] = useState('')
   const [createdSlug, setCreatedSlug] = useState('')
   const [createdId, setCreatedId] = useState('')
@@ -30,7 +29,6 @@ export default function EventCreate() {
       venue_name: venueName || undefined,
       venue_address: venueAddress || undefined,
       event_date: eventDate || undefined,
-      fee_per_person: feePerPerson ? parseInt(feePerPerson) : undefined,
       memo: memo || undefined,
     })
     setSaving(false)
@@ -89,11 +87,6 @@ export default function EventCreate() {
                 <label className="text-xs font-semibold text-sub mb-1 block">日時</label>
                 <input value={eventDate} onChange={(e) => setEventDate(e.target.value)}
                   placeholder="例：2026年5月10日（土）" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-sub mb-1 block">参加費（一人あたり）</label>
-                <input type="number" value={feePerPerson} onChange={(e) => setFeePerPerson(e.target.value)}
-                  placeholder="4000" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-sub mb-1 block">メモ（任意）</label>
