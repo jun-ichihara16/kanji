@@ -30,6 +30,9 @@ export default function EventManage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editPaypay, setEditPaypay] = useState('')
+  const [editMethod, setEditMethod] = useState('cash')
+  const [newPayMethod, setNewPayMethod] = useState('paypay')
+  const [settledMap, setSettledMap] = useState<Record<string, boolean>>({})
 
   const load = async () => {
     if (!id) return
@@ -51,13 +54,14 @@ export default function EventManage() {
     setAddingParticipant(true)
     const { data: newP } = await addParticipant(id, {
       name: newName.trim(),
-      payment_method: newPaypay.trim() ? 'paypay' : 'cash',
-      paypay_phone: newPaypay.trim() || undefined,
+      payment_method: newPayMethod,
+      paypay_phone: newPayMethod === 'paypay' ? newPaypay.trim() || undefined : undefined,
     })
     if (newP) {
       setParticipants((prev) => [...prev, newP])
       setNewName('')
       setNewPaypay('')
+      setNewPayMethod('paypay')
     }
     setAddingParticipant(false)
   }
@@ -67,16 +71,16 @@ export default function EventManage() {
     // 名前・PayPay・支払い方法を1回のUPDATEで保存
     const { error } = await supabase.from('participants').update({
       name: editName.trim(),
-      paypay_phone: editPaypay.trim() || null,
-      payment_method: editPaypay.trim() ? 'paypay' : 'cash',
+      payment_method: editMethod,
+      paypay_phone: editMethod === 'paypay' ? editPaypay.trim() || null : null,
     }).eq('id', p.id)
     if (error) { console.error('Update error:', error); alert('更新エラー: ' + error.message); return }
     setParticipants((prev) =>
       prev.map((pp) => (pp.id === p.id ? {
         ...pp,
         name: editName.trim(),
-        paypay_phone: editPaypay.trim() || null,
-        payment_method: editPaypay.trim() ? 'paypay' : 'cash',
+        payment_method: editMethod,
+        paypay_phone: editMethod === 'paypay' ? editPaypay.trim() || null : null,
       } : pp))
     )
     setEditingId(null)
@@ -194,12 +198,25 @@ export default function EventManage() {
                   className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
                   onKeyDown={(e) => { if (e.key === 'Enter' && newName.trim()) handleAddOne() }}
                 />
-                <input
-                  value={newPaypay}
-                  onChange={(e) => setNewPaypay(e.target.value)}
-                  placeholder="PayPay番号（任意）例: 09012345678"
-                  className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
-                />
+                <div>
+                  <label className="text-xs font-semibold text-sub mb-1 block">支払い方法</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[{ value: 'paypay', label: 'PayPay' }, { value: 'cash', label: '現金' }, { value: 'bank', label: '振込' }].map((m) => (
+                      <button key={m.value} type="button" onClick={() => setNewPayMethod(m.value)}
+                        className={`py-2 rounded-xl text-xs font-semibold border-2 transition ${newPayMethod === m.value ? 'border-green bg-green-light text-green-dark' : 'border-border text-sub'}`}>
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {newPayMethod === 'paypay' && (
+                  <input
+                    value={newPaypay}
+                    onChange={(e) => setNewPaypay(e.target.value)}
+                    placeholder="PayPay番号 例: 09012345678"
+                    className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
+                  />
+                )}
               </div>
               <button
                 onClick={handleAddOne}
@@ -224,12 +241,22 @@ export default function EventManage() {
                         autoFocus
                         onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(p); if (e.key === 'Escape') setEditingId(null) }}
                       />
-                      <input
-                        value={editPaypay}
-                        onChange={(e) => setEditPaypay(e.target.value)}
-                        placeholder="PayPay番号（任意）"
-                        className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter"
-                      />
+                      <div className="grid grid-cols-3 gap-1">
+                        {[{ value: 'paypay', label: 'PayPay' }, { value: 'cash', label: '現金' }, { value: 'bank', label: '振込' }].map((m) => (
+                          <button key={m.value} type="button" onClick={() => setEditMethod(m.value)}
+                            className={`py-1.5 rounded-lg text-xs font-semibold border transition ${editMethod === m.value ? 'border-green bg-green-light text-green-dark' : 'border-border text-sub'}`}>
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                      {editMethod === 'paypay' && (
+                        <input
+                          value={editPaypay}
+                          onChange={(e) => setEditPaypay(e.target.value)}
+                          placeholder="PayPay番号"
+                          className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter"
+                        />
+                      )}
                       <div className="flex gap-2">
                         <button onClick={() => handleSaveEdit(p)} className="text-xs bg-green text-white font-bold px-3 py-1.5 rounded-lg">保存</button>
                         <button onClick={() => setEditingId(null)} className="text-xs text-sub px-3 py-1.5">取消</button>
@@ -239,15 +266,14 @@ export default function EventManage() {
                     <>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold">{p.name}</div>
-                        {p.paypay_phone && (
-                          <div className="text-xs text-sub font-inter flex items-center gap-1 mt-0.5">
-                            <img src="/kanji/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
-                            {p.paypay_phone}
-                          </div>
-                        )}
+                        <div className="text-xs text-sub flex items-center gap-1 mt-0.5">
+                          {p.payment_method === 'paypay' && <><img src="/kanji/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" /> <span className="font-inter">{p.paypay_phone || 'PayPay'}</span></>}
+                          {p.payment_method === 'cash' && '💴 現金'}
+                          {p.payment_method === 'bank' && '🏦 振込'}
+                        </div>
                       </div>
                       <button
-                        onClick={() => { setEditingId(p.id); setEditName(p.name); setEditPaypay(p.paypay_phone || '') }}
+                        onClick={() => { setEditingId(p.id); setEditName(p.name); setEditPaypay(p.paypay_phone || ''); setEditMethod(p.payment_method) }}
                         className="shrink-0 text-xs text-sub hover:text-green transition px-1.5 py-1"
                       >
                         編集

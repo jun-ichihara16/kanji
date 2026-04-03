@@ -17,10 +17,12 @@ export default function GuestJoin() {
   // 参加者登録
   const [joinName, setJoinName] = useState('')
   const [joinPaypay, setJoinPaypay] = useState('')
+  const [joinPayMethod, setJoinPayMethod] = useState('paypay')
   const [joining, setJoining] = useState(false)
   const [editingPId, setEditingPId] = useState<string | null>(null)
   const [editPName, setEditPName] = useState('')
   const [editPPaypay, setEditPPaypay] = useState('')
+  const [editPMethod, setEditPMethod] = useState('cash')
 
   // 立替フォーム
   const [payerName, setPayerName] = useState('')
@@ -30,6 +32,7 @@ export default function GuestJoin() {
   const [targetNames, setTargetNames] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [settledMap, setSettledMap] = useState<Record<string, boolean>>({})
 
   const participantNames = useMemo(() => participants.map((p) => p.name), [participants])
 
@@ -66,13 +69,14 @@ export default function GuestJoin() {
     setJoining(true)
     const { data: newP } = await addParticipant(event.id, {
       name: joinName.trim(),
-      payment_method: joinPaypay.trim() ? 'paypay' : 'cash',
-      paypay_phone: joinPaypay.trim() || undefined,
+      payment_method: joinPayMethod,
+      paypay_phone: joinPayMethod === 'paypay' ? joinPaypay.trim() || undefined : undefined,
     })
     if (newP) {
       setParticipants((prev) => [...prev, newP])
       setJoinName('')
       setJoinPaypay('')
+      setJoinPayMethod('paypay')
     }
     setJoining(false)
   }
@@ -81,14 +85,14 @@ export default function GuestJoin() {
     if (!editPName.trim()) { setEditingPId(null); return }
     await supabase.from('participants').update({
       name: editPName.trim(),
-      paypay_phone: editPPaypay.trim() || null,
-      payment_method: editPPaypay.trim() ? 'paypay' : 'cash',
+      payment_method: editPMethod,
+      paypay_phone: editPMethod === 'paypay' ? editPPaypay.trim() || null : null,
     }).eq('id', p.id)
     setParticipants((prev) => prev.map((pp) => pp.id === p.id ? {
       ...pp,
       name: editPName.trim(),
-      paypay_phone: editPPaypay.trim() || null,
-      payment_method: editPPaypay.trim() ? 'paypay' : 'cash',
+      payment_method: editPMethod,
+      paypay_phone: editPMethod === 'paypay' ? editPPaypay.trim() || null : null,
     } : pp))
     setEditingPId(null)
   }
@@ -220,13 +224,33 @@ export default function GuestJoin() {
                           autoFocus
                           onKeyDown={(e) => { if (e.key === 'Escape') setEditingPId(null) }}
                         />
-                        <input
-                          value={editPPaypay}
-                          onChange={(e) => setEditPPaypay(e.target.value)}
-                          placeholder="PayPay番号（任意）"
-                          type="tel"
-                          className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter"
-                        />
+                        <div className="grid grid-cols-3 gap-1">
+                          {[
+                            { value: 'paypay', label: 'PayPay' },
+                            { value: 'cash', label: '現金' },
+                            { value: 'bank', label: '振込' },
+                          ].map((m) => (
+                            <button
+                              key={m.value}
+                              type="button"
+                              onClick={() => setEditPMethod(m.value)}
+                              className={`py-1.5 rounded-lg text-xs font-semibold border transition ${
+                                editPMethod === m.value ? 'border-green bg-green-light text-green-dark' : 'border-border text-sub'
+                              }`}
+                            >
+                              {m.label}
+                            </button>
+                          ))}
+                        </div>
+                        {editPMethod === 'paypay' && (
+                          <input
+                            value={editPPaypay}
+                            onChange={(e) => setEditPPaypay(e.target.value)}
+                            placeholder="PayPay番号"
+                            type="tel"
+                            className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter"
+                          />
+                        )}
                         <div className="flex gap-2">
                           <button onClick={() => handleEditParticipant(p)} className="text-xs bg-green text-white font-bold px-3 py-1.5 rounded-lg">保存</button>
                           <button onClick={() => setEditingPId(null)} className="text-xs text-sub px-3 py-1.5">取消</button>
@@ -239,15 +263,14 @@ export default function GuestJoin() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm">{p.name}</div>
-                          {p.paypay_phone && (
-                            <div className="text-xs text-sub font-inter flex items-center gap-1">
-                              <img src="/kanji/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" />
-                              {p.paypay_phone}
-                            </div>
-                          )}
+                          <div className="text-xs text-sub flex items-center gap-1">
+                            {p.payment_method === 'paypay' && <><img src="/kanji/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" /> {p.paypay_phone || 'PayPay'}</>}
+                            {p.payment_method === 'cash' && '💴 現金'}
+                            {p.payment_method === 'bank' && '🏦 振込'}
+                          </div>
                         </div>
                         <button
-                          onClick={() => { setEditingPId(p.id); setEditPName(p.name); setEditPPaypay(p.paypay_phone || '') }}
+                          onClick={() => { setEditingPId(p.id); setEditPName(p.name); setEditPPaypay(p.paypay_phone || ''); setEditPMethod(p.payment_method) }}
                           className="text-xs text-sub hover:text-green"
                         >
                           編集
@@ -277,13 +300,36 @@ export default function GuestJoin() {
                   placeholder="名前"
                   className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
                 />
-                <input
-                  value={joinPaypay}
-                  onChange={(e) => setJoinPaypay(e.target.value)}
-                  placeholder="PayPay番号 / 電話番号（任意）"
-                  type="tel"
-                  className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
-                />
+                <div>
+                  <label className="text-xs font-semibold text-sub mb-1 block">支払い方法</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { value: 'paypay', label: 'PayPay' },
+                      { value: 'cash', label: '現金' },
+                      { value: 'bank', label: '振込' },
+                    ].map((m) => (
+                      <button
+                        key={m.value}
+                        type="button"
+                        onClick={() => setJoinPayMethod(m.value)}
+                        className={`py-2.5 rounded-xl text-xs font-semibold border-2 transition ${
+                          joinPayMethod === m.value ? 'border-green bg-green-light text-green-dark' : 'border-border text-sub'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {joinPayMethod === 'paypay' && (
+                  <input
+                    value={joinPaypay}
+                    onChange={(e) => setJoinPaypay(e.target.value)}
+                    placeholder="PayPay番号 / 電話番号"
+                    type="tel"
+                    className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
+                  />
+                )}
               </div>
               <button
                 onClick={handleJoin}
@@ -440,13 +486,26 @@ export default function GuestJoin() {
                   {settlements.map((s, i) => {
                     const payee = participants.find((p) => p.name === s.to && p.payment_method === 'paypay')
                     return (
-                      <div key={i} className="bg-white border border-border rounded-xl p-4">
-                        <div className="flex items-center gap-2 mb-1 text-sm">
-                          <span className="font-semibold">{s.from}</span>
-                          <span className="text-sub">→</span>
-                          <span className="font-semibold">{s.to}</span>
+                      <div key={i} className={`bg-white border rounded-xl p-4 transition ${settledMap[`${s.from}-${s.to}`] ? 'border-green/30 bg-green-light/30' : 'border-border'}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="font-semibold">{s.from}</span>
+                            <span className="text-sub">→</span>
+                            <span className="font-semibold">{s.to}</span>
+                          </div>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={!!settledMap[`${s.from}-${s.to}`]}
+                              onChange={() => setSettledMap((prev) => ({ ...prev, [`${s.from}-${s.to}`]: !prev[`${s.from}-${s.to}`] }))}
+                              className="w-4 h-4 accent-green"
+                            />
+                            <span className={`text-xs font-semibold ${settledMap[`${s.from}-${s.to}`] ? 'text-green' : 'text-sub'}`}>
+                              {settledMap[`${s.from}-${s.to}`] ? '精算済み' : '未精算'}
+                            </span>
+                          </label>
                         </div>
-                        <div className="font-inter text-xl font-extrabold text-green">
+                        <div className={`font-inter text-xl font-extrabold ${settledMap[`${s.from}-${s.to}`] ? 'text-sub line-through' : 'text-green'}`}>
                           ¥{s.amount.toLocaleString()}
                         </div>
                         {payee?.paypay_phone && (
