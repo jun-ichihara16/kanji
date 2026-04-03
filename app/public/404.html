@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>AI KANJI</title>
+<script>
+  // GitHub Pages SPA redirect
+  // /kanji/app/auth/callback?code=xxx → /kanji/app/?route=/auth/callback&code=xxx
+  var path = window.location.pathname;
+  var search = window.location.search;
+  var hash = window.location.hash;
+  // Redirect to index.html with the path stored in sessionStorage
+  sessionStorage.setItem('spa_redirect', path + search + hash);
+  window.location.replace('/kanji/app/');
+</script>
+</head>
+<body></body>
+</html>
