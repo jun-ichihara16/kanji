@@ -32,7 +32,12 @@ export default function EventCreate() {
       memo: memo || undefined,
     })
     setSaving(false)
-    if (data && !error) {
+    console.log('[EventCreate] result:', { data, error })
+    if (error) {
+      alert('イベント作成エラー: ' + (error.message || JSON.stringify(error)))
+      return
+    }
+    if (data) {
       setCreatedSlug(data.slug)
       setCreatedId(data.id)
       setStep(2)
