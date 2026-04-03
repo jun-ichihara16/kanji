@@ -464,15 +464,25 @@ export default function GuestJoin() {
                             >
                               番号コピー
                             </button>
-                            <a
-                              href={`https://www.paypay.ne.jp/app/cashier`}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              onClick={() => {
+                                // PayPayアプリを開く（スマホのみ）
+                                const w = window.open('paypay://', '_blank')
+                                // アプリが開けなかった場合はストアへ
+                                setTimeout(() => {
+                                  if (!w || w.closed) {
+                                    const isIOS = /iPhone|iPad/.test(navigator.userAgent)
+                                    window.location.href = isIOS
+                                      ? 'https://apps.apple.com/jp/app/paypay/id1435783608'
+                                      : 'https://play.google.com/store/apps/details?id=jp.ne.paypay.android.app'
+                                  }
+                                }, 1500)
+                              }}
                               className="text-xs bg-red-50 text-red-600 font-semibold px-2.5 py-1 rounded-lg hover:bg-red-100 transition flex items-center gap-1"
                             >
                               <img src="/kanji/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" />
-                              PayPay
-                            </a>
+                              PayPayを開く
+                            </button>
                           </div>
                         )}
                       </div>
