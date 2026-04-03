@@ -13,7 +13,7 @@ const TABS = ['参加者', 'PayPay', '立替', '精算'] as const
 export default function EventManage() {
   const { id } = useParams<{ id: string }>()
   const {
-    fetchEventById, fetchParticipants, addParticipant, togglePaid,
+    fetchEventById, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, togglePaid,
     fetchAdvances, addAdvance, deleteAdvance,
   } = useEvent()
 
@@ -23,8 +23,10 @@ export default function EventManage() {
   const [settlements, setSettlements] = useState<Settlement[]>([])
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>('参加者')
   const [loading, setLoading] = useState(true)
-  const [newName, setNewName] = useState('')
+  const [bulkNames, setBulkNames] = useState('')
   const [addingParticipant, setAddingParticipant] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
 
   const load = async () => {
     if (!id) return
@@ -41,18 +43,42 @@ export default function EventManage() {
 
   useEffect(() => { load() }, [id])
 
-  const handleAddParticipant = async () => {
-    if (!id || !newName.trim()) return
+  const handleBulkAdd = async () => {
+    if (!id || !bulkNames.trim()) return
     setAddingParticipant(true)
-    const { data: newP } = await addParticipant(id, {
-      name: newName.trim(),
-      payment_method: 'cash',
-    })
-    if (newP) {
-      setParticipants((prev) => [...prev, newP])
-      setNewName('')
+    // カンマ、改行、スペースで分割
+    const names = bulkNames
+      .split(/[,、\n\r]+/)
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0)
+    for (const name of names) {
+      const { data: newP } = await addParticipant(id, {
+        name,
+        payment_method: 'cash',
+      })
+      if (newP) {
+        setParticipants((prev) => [...prev, newP])
+      }
     }
+    setBulkNames('')
     setAddingParticipant(false)
+  }
+
+  const handleRename = async (p: Participant) => {
+    if (!editName.trim() || editName.trim() === p.name) {
+      setEditingId(null)
+      return
+    }
+    await updateParticipantName(p.id, editName.trim())
+    setParticipants((prev) =>
+      prev.map((pp) => (pp.id === p.id ? { ...pp, name: editName.trim() } : pp))
+    )
+    setEditingId(null)
+  }
+
+  const handleDelete = async (p: Participant) => {
+    await deleteParticipant(p.id)
+    setParticipants((prev) => prev.filter((pp) => pp.id !== p.id))
   }
 
   const handleTogglePaid = async (p: Participant) => {
@@ -139,43 +165,71 @@ export default function EventManage() {
         {/* TAB: 参加者 */}
         {activeTab === '参加者' && (
           <>
+            {/* 一括追加フォーム */}
+            <div className="bg-white border border-border rounded-2xl p-4 mb-4">
+              <h3 className="text-sm font-bold mb-1">参加者を追加</h3>
+              <p className="text-xs text-sub mb-2">カンマ区切り or 改行で複数人まとめて追加</p>
+              <textarea
+                value={bulkNames}
+                onChange={(e) => setBulkNames(e.target.value)}
+                placeholder={"田中太郎, 鈴木花子, 佐藤健"}
+                rows={2}
+                className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green resize-none"
+              />
+              <button
+                onClick={handleBulkAdd}
+                disabled={!bulkNames.trim() || addingParticipant}
+                className="w-full mt-2 py-3 bg-green text-white text-sm font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
+              >
+                {addingParticipant ? '追加中...' : '追加する'}
+              </button>
+            </div>
+
+            {/* 参加者リスト（編集・削除） */}
             <div className="space-y-2 mb-4">
               {participants.map((p) => (
-                <ParticipantCard
-                  key={p.id}
-                  name={p.name}
-                  paymentMethod={p.payment_method}
-                  isPaid={p.is_paid}
-                  paypayPhone={p.paypay_phone}
-                  onTogglePaid={() => handleTogglePaid(p)}
-                />
+                <div key={p.id} className="flex items-center gap-2 p-3 bg-white border border-border rounded-xl">
+                  {editingId === p.id ? (
+                    <>
+                      <input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="flex-1 p-2 border border-green rounded-lg text-sm focus:outline-none"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleRename(p)
+                          if (e.key === 'Escape') setEditingId(null)
+                        }}
+                      />
+                      <button onClick={() => handleRename(p)} className="text-xs text-green font-bold px-2 py-1">保存</button>
+                      <button onClick={() => setEditingId(null)} className="text-xs text-sub px-2 py-1">取消</button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-semibold">{p.name}</span>
+                      </div>
+                      <button
+                        onClick={() => { setEditingId(p.id); setEditName(p.name) }}
+                        className="shrink-0 text-xs text-sub hover:text-green transition px-1.5 py-1"
+                      >
+                        編集
+                      </button>
+                      <button
+                        onClick={() => handleDelete(p)}
+                        className="shrink-0 text-xs text-sub hover:text-red-500 transition px-1.5 py-1"
+                      >
+                        削除
+                      </button>
+                    </>
+                  )}
+                </div>
               ))}
               {participants.length === 0 && (
                 <p className="text-center py-8 text-sub text-sm">まだ参加者がいません</p>
               )}
             </div>
-            {/* 参加者追加フォーム */}
-            <div className="flex gap-2 mb-4">
-              <input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="参加者の名前を入力"
-                className="flex-1 p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newName.trim()) {
-                    e.preventDefault()
-                    handleAddParticipant()
-                  }
-                }}
-              />
-              <button
-                onClick={handleAddParticipant}
-                disabled={!newName.trim() || addingParticipant}
-                className="shrink-0 px-4 py-3 bg-green text-white text-sm font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
-              >
-                追加
-              </button>
-            </div>
+            <div className="text-xs text-sub text-center mb-4">{participants.length}人 登録済み</div>
 
             <div className="bg-gray-bg rounded-xl p-3 mb-3">
               <p className="text-xs text-sub mb-2">参加者URL（LINEで共有）</p>

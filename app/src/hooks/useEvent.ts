@@ -106,6 +106,22 @@ export function useEvent() {
     return { data: data as Participant | null, error }
   }
 
+  async function updateParticipantName(id: string, name: string) {
+    const { error } = await supabase
+      .from('participants')
+      .update({ name })
+      .eq('id', id)
+    return { error }
+  }
+
+  async function deleteParticipant(id: string) {
+    const { error } = await supabase
+      .from('participants')
+      .delete()
+      .eq('id', id)
+    return { error }
+  }
+
   async function togglePaid(id: string, isPaid: boolean) {
     const { error } = await supabase
       .from('participants')
@@ -150,6 +166,8 @@ export function useEvent() {
     createEvent,
     fetchParticipants,
     addParticipant,
+    updateParticipantName,
+    deleteParticipant,
     togglePaid,
     fetchAdvances,
     addAdvance,

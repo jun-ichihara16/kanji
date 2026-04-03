@@ -22,9 +22,9 @@ export default function GuestJoin() {
   const [submitted, setSubmitted] = useState(false)
 
   // 参加者登録
-  const [joinName, setJoinName] = useState('')
+  const [joinNames, setJoinNames] = useState('')
   const [joining, setJoining] = useState(false)
-  const [joined, setJoined] = useState(false)
+  const [joinedCount, setJoinedCount] = useState(0)
 
   const participantNames = useMemo(() => participants.map((p) => p.name), [participants])
 
@@ -56,17 +56,25 @@ export default function GuestJoin() {
   }, [slug])
 
   const handleJoin = async () => {
-    if (!event || !joinName.trim()) return
+    if (!event || !joinNames.trim()) return
     setJoining(true)
-    const { data: newP } = await addParticipant(event.id, {
-      name: joinName.trim(),
-      payment_method: 'cash',
-    })
-    if (newP) {
-      setParticipants((prev) => [...prev, newP])
-      setJoinName('')
-      setJoined(true)
+    const names = joinNames
+      .split(/[,、\n\r]+/)
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0)
+    let count = 0
+    for (const name of names) {
+      const { data: newP } = await addParticipant(event.id, {
+        name,
+        payment_method: 'cash',
+      })
+      if (newP) {
+        setParticipants((prev) => [...prev, newP])
+        count++
+      }
     }
+    setJoinNames('')
+    setJoinedCount((prev) => prev + count)
     setJoining(false)
   }
 
@@ -159,32 +167,31 @@ export default function GuestJoin() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
           参加する
         </h2>
-        {joined ? (
-          <div className="bg-green-light border border-green/20 rounded-xl p-4 text-center">
-            <div className="text-green-dark font-bold text-sm mb-1">参加登録しました！</div>
-            <p className="text-xs text-sub">下の立替フォームから費用を登録できます。</p>
+        {joinedCount > 0 && (
+          <div className="bg-green-light border border-green/20 rounded-xl p-3 mb-3 text-center">
+            <span className="text-green-dark font-bold text-sm">{joinedCount}人を登録しました！</span>
           </div>
-        ) : (
-          <div className="flex gap-2">
-            <input
-              value={joinName}
-              onChange={(e) => setJoinName(e.target.value)}
-              placeholder="あなたの名前を入力"
-              className="flex-1 p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && joinName.trim()) {
-                  e.preventDefault()
-                  handleJoin()
-                }
-              }}
-            />
-            <button
-              onClick={handleJoin}
-              disabled={!joinName.trim() || joining}
-              className="shrink-0 px-5 py-3 bg-green text-white text-sm font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
-            >
-              {joining ? '...' : '参加'}
-            </button>
+        )}
+        <div className="bg-white border border-border rounded-2xl p-4">
+          <p className="text-xs text-sub mb-2">カンマ区切り or 改行で複数人まとめて登録できます</p>
+          <textarea
+            value={joinNames}
+            onChange={(e) => setJoinNames(e.target.value)}
+            placeholder={"田中太郎, 鈴木花子, 佐藤健"}
+            rows={2}
+            className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green resize-none"
+          />
+          <button
+            onClick={handleJoin}
+            disabled={!joinNames.trim() || joining}
+            className="w-full mt-2 py-3 bg-green text-white text-sm font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
+          >
+            {joining ? '登録中...' : '参加する'}
+          </button>
+        </div>
+        {participants.length > 0 && (
+          <div className="mt-3 text-xs text-sub">
+            現在の参加者（{participants.length}人）：{participants.map(p => p.name).join('、')}
           </div>
         )}
       </div>
