@@ -5,7 +5,7 @@ import { useEvent, Event, Participant } from '../hooks/useEvent'
 
 export default function Dashboard() {
   const { user, displayName } = useAuth()
-  const { fetchMyEvents, fetchParticipants } = useEvent()
+  const { fetchMyEvents, fetchParticipants, deleteEvent } = useEvent()
   const [events, setEvents] = useState<Event[]>([])
   const [stats, setStats] = useState<Record<string, { total: number; paid: number }>>({})
   const [loading, setLoading] = useState(true)
@@ -52,30 +52,40 @@ export default function Dashboard() {
             const s = stats[ev.id] || { total: 0, paid: 0 }
             const pct = s.total > 0 ? Math.round((s.paid / s.total) * 100) : 0
             return (
-              <Link
-                key={ev.id}
-                to={`/events/${ev.id}`}
-                className="block bg-white border border-border rounded-2xl p-4 hover:border-green hover:shadow-sm transition"
-              >
-                <div className="font-bold mb-2">{ev.title}</div>
-                <div className="flex items-center gap-1.5 text-xs text-sub mb-1">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                  {ev.event_date || '日程未定'}
-                </div>
-                {ev.venue_name && (
+              <div key={ev.id} className="bg-white border border-border rounded-2xl p-4 hover:border-green hover:shadow-sm transition">
+                <Link to={`/events/${ev.id}`} className="block">
+                  <div className="font-bold mb-2">{ev.title}</div>
                   <div className="flex items-center gap-1.5 text-xs text-sub mb-1">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    {ev.venue_name}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    {ev.event_date || '日程未定'}
                   </div>
-                )}
-                <div className="flex gap-3 mt-2.5 text-xs text-sub">
-                  <span>参加者 <strong className="text-[#1A1A1A]">{s.total}人</strong></span>
-                  <span>支払い済み <strong className="text-green">{s.paid}/{s.total}</strong></span>
-                </div>
-                <div className="h-1 bg-border rounded-full mt-2 overflow-hidden">
-                  <div className="h-full bg-green rounded-full transition-all" style={{ width: `${pct}%` }} />
-                </div>
-              </Link>
+                  {ev.venue_name && (
+                    <div className="flex items-center gap-1.5 text-xs text-sub mb-1">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      {ev.venue_name}
+                    </div>
+                  )}
+                  <div className="flex gap-3 mt-2.5 text-xs text-sub">
+                    <span>参加者 <strong className="text-[#1A1A1A]">{s.total}人</strong></span>
+                    <span>支払い済み <strong className="text-green">{s.paid}/{s.total}</strong></span>
+                  </div>
+                  <div className="h-1 bg-border rounded-full mt-2 overflow-hidden">
+                    <div className="h-full bg-green rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                </Link>
+                <button
+                  onClick={async (e) => {
+                    e.preventDefault()
+                    if (!confirm(`「${ev.title}」を削除しますか？\n参加者・立替データもすべて削除されます。`))
+                      return
+                    await deleteEvent(ev.id)
+                    setEvents((prev) => prev.filter((e) => e.id !== ev.id))
+                  }}
+                  className="mt-3 text-xs text-sub hover:text-red-500 transition"
+                >
+                  このイベントを削除
+                </button>
+              </div>
             )
           })}
         </div>

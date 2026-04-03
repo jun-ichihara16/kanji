@@ -84,6 +84,11 @@ export function useEvent() {
     return { data: data as Event | null, error }
   }
 
+  async function deleteEvent(id: string) {
+    const { error } = await supabase.from('events').delete().eq('id', id)
+    return { error }
+  }
+
   async function fetchParticipants(eventId: string) {
     const { data, error } = await supabase
       .from('participants')
@@ -164,6 +169,7 @@ export function useEvent() {
     fetchEventBySlug,
     fetchEventById,
     createEvent,
+    deleteEvent,
     fetchParticipants,
     addParticipant,
     updateParticipantName,

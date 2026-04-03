@@ -15,7 +15,7 @@ export default function EventManage() {
   const { id } = useParams<{ id: string }>()
   const {
     fetchEventById, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, togglePaid,
-    fetchAdvances, addAdvance, deleteAdvance,
+    fetchAdvances, addAdvance, deleteAdvance, deleteEvent,
   } = useEvent()
 
   const [event, setEvent] = useState<Event | null>(null)
@@ -136,9 +136,21 @@ export default function EventManage() {
   return (
     <div className="flex-1 flex flex-col">
       {/* Event title */}
-      <div className="px-4 pt-4 pb-2">
-        <h2 className="text-lg font-bold">{event.title}</h2>
-        {event.event_date && <p className="text-xs text-sub mt-0.5">{event.event_date}</p>}
+      <div className="px-4 pt-4 pb-2 flex items-start justify-between">
+        <div>
+          <h2 className="text-lg font-bold">{event.title}</h2>
+          {event.event_date && <p className="text-xs text-sub mt-0.5">{event.event_date}</p>}
+        </div>
+        <button
+          onClick={async () => {
+            if (!confirm(`「${event.title}」を削除しますか？`)) return
+            await deleteEvent(event.id)
+            window.location.href = '/kanji/app/dashboard'
+          }}
+          className="text-xs text-sub hover:text-red-500 transition mt-1"
+        >
+          削除
+        </button>
       </div>
 
       {/* Summary */}
