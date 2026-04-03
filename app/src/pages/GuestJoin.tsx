@@ -448,9 +448,31 @@ export default function GuestJoin() {
                           ¥{s.amount.toLocaleString()}
                         </div>
                         {payee?.paypay_phone && (
-                          <div className="mt-1.5 text-xs text-sub flex items-center gap-1">
-                            <img src="/kanji/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
-                            PayPay: {payee.paypay_phone}
+                          <div className="mt-2 flex items-center gap-2">
+                            <div className="flex-1 flex items-center gap-1.5 text-xs text-sub">
+                              <img src="/kanji/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
+                              PayPay: <span className="font-inter">{payee.paypay_phone}</span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(payee.paypay_phone!)
+                                const btn = document.getElementById(`copy-pp-${i}`)
+                                if (btn) { btn.textContent = 'コピー済み'; setTimeout(() => { btn.textContent = '番号コピー' }, 1500) }
+                              }}
+                              id={`copy-pp-${i}`}
+                              className="text-xs bg-green-light text-green-dark font-semibold px-2.5 py-1 rounded-lg hover:bg-green/10 transition"
+                            >
+                              番号コピー
+                            </button>
+                            <a
+                              href={`https://www.paypay.ne.jp/app/cashier`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs bg-red-50 text-red-600 font-semibold px-2.5 py-1 rounded-lg hover:bg-red-100 transition flex items-center gap-1"
+                            >
+                              <img src="/kanji/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" />
+                              PayPay
+                            </a>
                           </div>
                         )}
                       </div>
