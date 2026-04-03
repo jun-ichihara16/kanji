@@ -9,7 +9,7 @@ import PayPayList from '../components/PayPayList'
 import AdvancePaymentForm from '../components/AdvancePaymentForm'
 import SettlementList from '../components/SettlementList'
 
-const TABS = ['参加者', 'PayPay', '立替', '精算'] as const
+const TABS = ['参加者', '立替'] as const
 
 export default function EventManage() {
   const { id } = useParams<{ id: string }>()
@@ -33,6 +33,9 @@ export default function EventManage() {
   const [editMethod, setEditMethod] = useState('cash')
   const [newPayMethod, setNewPayMethod] = useState('paypay')
   const [settledMap, setSettledMap] = useState<Record<string, boolean>>({})
+  const [editingAdvId, setEditingAdvId] = useState<string | null>(null)
+  const [editAdvAmount, setEditAdvAmount] = useState('')
+  const [editAdvDesc, setEditAdvDesc] = useState('')
 
   const load = async () => {
     if (!id) return
@@ -105,6 +108,18 @@ export default function EventManage() {
     if (!id) return
     const { data: newAdv } = await addAdvance(id, data)
     if (newAdv) setAdvances((prev) => [...prev, newAdv])
+  }
+
+  const handleSaveAdvance = async (a: AdvanceRecord) => {
+    if (!editAdvAmount) { setEditingAdvId(null); return }
+    await supabase.from('advances').update({
+      amount: parseInt(editAdvAmount),
+      description: editAdvDesc || null,
+    }).eq('id', a.id)
+    setAdvances((prev) => prev.map((ad) => ad.id === a.id ? {
+      ...ad, amount: parseInt(editAdvAmount), description: editAdvDesc || null,
+    } : ad))
+    setEditingAdvId(null)
   }
 
   const handleDeleteAdvance = async (advId: string) => {
@@ -308,12 +323,64 @@ export default function EventManage() {
                 </button>
               </div>
             </div>
-          </>
-        )}
 
-        {/* TAB: PayPay */}
-        {activeTab === 'PayPay' && (
-          <PayPayList participants={participants} />
+            {/* 精算状況サマリー */}
+            {advances.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-sm font-bold mb-2">精算状況</h3>
+                {(() => {
+                  const advs = advances.map((a) => ({
+                    payerName: a.payer_name, amount: a.amount,
+                    splitTarget: a.split_target as 'all' | 'specific',
+                    targetNames: a.target_names ?? undefined,
+                  }))
+                  const names = participants.map((p) => p.name)
+                  const setts = calculateSettlements(advs, names)
+                  if (setts.length === 0) return (
+                    <div className="bg-green-light rounded-xl p-3 text-center text-sm text-green-dark font-semibold">
+                      ✅ 精算不要（均等に立替済み）
+                    </div>
+                  )
+                  const settledCount = Object.values(settledMap).filter(Boolean).length
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-sub mb-1">
+                        <span>進捗</span>
+                        <span><span className="text-green font-bold">{settledCount}</span> / {setts.length} 件完了</span>
+                      </div>
+                      <div className="h-1.5 bg-border rounded-full overflow-hidden mb-2">
+                        <div className="h-full bg-green rounded-full transition-all" style={{ width: `${(settledCount / setts.length) * 100}%` }} />
+                      </div>
+                      {setts.map((s, i) => {
+                        const key = `${s.from}-${s.to}`
+                        const isSettled = !!settledMap[key]
+                        const p = participants.find((pp) => pp.name === s.to)
+                        return (
+                          <div key={i} className={`flex items-center gap-2 p-3 rounded-xl border transition ${isSettled ? 'bg-gray-bg/50 border-border opacity-60' : 'bg-white border-border'}`}>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm"><span className="font-semibold">{s.from}</span> <span className="text-sub">→</span> <span className="font-semibold">{s.to}</span></div>
+                              <div className="text-xs text-sub">
+                                {p?.payment_method === 'paypay' && p.paypay_phone ? `PayPay: ${p.paypay_phone}` : p?.payment_method === 'bank' ? '振込' : '現金'}
+                              </div>
+                            </div>
+                            <div className={`font-inter text-sm font-bold shrink-0 ${isSettled ? 'text-sub line-through' : 'text-green'}`}>
+                              ¥{s.amount.toLocaleString()}
+                            </div>
+                            <button
+                              onClick={() => setSettledMap((prev) => ({ ...prev, [key]: !prev[key] }))}
+                              className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full transition ${isSettled ? 'bg-gray-bg text-sub' : 'bg-green text-white'}`}
+                            >
+                              {isSettled ? '済み' : '完了'}
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+          </>
         )}
 
         {/* TAB: 立替 */}
@@ -328,22 +395,36 @@ export default function EventManage() {
                 <h3 className="text-sm font-bold mb-2">登録済みの立替</h3>
                 <div className="space-y-2">
                   {advances.map((a) => (
-                    <div key={a.id} className="flex items-center gap-3 p-3 bg-white border border-border rounded-xl">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold">{a.payer_name}</div>
-                        <div className="text-xs text-sub">
-                          {a.description || '立替'} ・ {a.split_target === 'all' ? '全員' : a.target_names?.join(', ')}
+                    <div key={a.id} className="bg-white border border-border rounded-xl p-3">
+                      {editingAdvId === a.id ? (
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold">{a.payer_name}</div>
+                          <input value={editAdvDesc} onChange={(e) => setEditAdvDesc(e.target.value)} placeholder="内容"
+                            className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green" />
+                          <input type="number" value={editAdvAmount} onChange={(e) => setEditAdvAmount(e.target.value)} placeholder="金額"
+                            className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter" />
+                          <div className="flex gap-2">
+                            <button onClick={() => handleSaveAdvance(a)} className="text-xs bg-green text-white font-bold px-3 py-1.5 rounded-lg">保存</button>
+                            <button onClick={() => setEditingAdvId(null)} className="text-xs text-sub px-3 py-1.5">取消</button>
+                          </div>
                         </div>
-                      </div>
-                      <div className="font-inter text-sm font-bold text-green shrink-0">
-                        ¥{a.amount.toLocaleString()}
-                      </div>
-                      <button
-                        onClick={() => handleDeleteAdvance(a.id)}
-                        className="shrink-0 text-xs text-red-400 hover:text-red-600"
-                      >
-                        削除
-                      </button>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold">{a.payer_name}</div>
+                            <div className="text-xs text-sub">
+                              {a.description || '立替'} ・ {a.split_target === 'all' ? '全員' : a.target_names?.join(', ')}
+                            </div>
+                          </div>
+                          <div className="font-inter text-sm font-bold text-green shrink-0">
+                            ¥{a.amount.toLocaleString()}
+                          </div>
+                          <button onClick={() => { setEditingAdvId(a.id); setEditAdvAmount(String(a.amount)); setEditAdvDesc(a.description || '') }}
+                            className="shrink-0 text-xs text-sub hover:text-green">編集</button>
+                          <button onClick={() => handleDeleteAdvance(a.id)}
+                            className="shrink-0 text-xs text-sub hover:text-red-500">削除</button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -352,24 +433,6 @@ export default function EventManage() {
           </>
         )}
 
-        {/* TAB: 精算 */}
-        {activeTab === '精算' && (
-          <>
-            <button
-              onClick={handleCalculate}
-              className="w-full py-3.5 bg-green text-white font-bold rounded-xl mb-4 hover:bg-green-dark transition"
-            >
-              精算を計算する
-            </button>
-            {settlements.length > 0 || advances.length === 0 ? (
-              <SettlementList settlements={settlements} participants={participants} />
-            ) : (
-              <p className="text-center text-sm text-sub py-8">
-                「精算を計算する」をタップしてください
-              </p>
-            )}
-          </>
-        )}
       </div>
     </div>
   )

@@ -34,6 +34,11 @@ export default function GuestJoin() {
   const [submitted, setSubmitted] = useState(false)
   const [settledMap, setSettledMap] = useState<Record<string, boolean>>({})
 
+  // 立替編集
+  const [editingAdvId, setEditingAdvId] = useState<string | null>(null)
+  const [editAdvAmount, setEditAdvAmount] = useState('')
+  const [editAdvDesc, setEditAdvDesc] = useState('')
+
   const participantNames = useMemo(() => participants.map((p) => p.name), [participants])
 
   const settlements = useMemo(() => {
@@ -100,6 +105,20 @@ export default function GuestJoin() {
   const handleDeleteParticipant = async (p: Participant) => {
     await deleteParticipant(p.id)
     setParticipants((prev) => prev.filter((pp) => pp.id !== p.id))
+  }
+
+  const handleSaveAdvance = async (a: AdvanceRecord) => {
+    if (!editAdvAmount) { setEditingAdvId(null); return }
+    await supabase.from('advances').update({
+      amount: parseInt(editAdvAmount),
+      description: editAdvDesc || null,
+    }).eq('id', a.id)
+    setAdvances((prev) => prev.map((ad) => ad.id === a.id ? {
+      ...ad,
+      amount: parseInt(editAdvAmount),
+      description: editAdvDesc || null,
+    } : ad))
+    setEditingAdvId(null)
   }
 
   const handleDeleteAdvance = async (advId: string) => {
@@ -444,22 +463,53 @@ export default function GuestJoin() {
                 <h3 className="text-sm font-bold mb-2">立替え一覧（{advances.length}件）</h3>
                 <div className="space-y-2">
                   {advances.map((a) => (
-                    <div key={a.id} className="flex items-center gap-3 p-3 bg-white border border-border rounded-xl">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold">{a.payer_name}</div>
-                        <div className="text-xs text-sub">
-                          {a.description || '立替'} ・ {a.split_target === 'all' ? '全員で割り勘' : a.target_names?.join('、')}
+                    <div key={a.id} className="bg-white border border-border rounded-xl p-3">
+                      {editingAdvId === a.id ? (
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold">{a.payer_name}</div>
+                          <input
+                            value={editAdvDesc}
+                            onChange={(e) => setEditAdvDesc(e.target.value)}
+                            placeholder="内容"
+                            className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green"
+                          />
+                          <input
+                            type="number"
+                            value={editAdvAmount}
+                            onChange={(e) => setEditAdvAmount(e.target.value)}
+                            placeholder="金額"
+                            className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter"
+                          />
+                          <div className="flex gap-2">
+                            <button onClick={() => handleSaveAdvance(a)} className="text-xs bg-green text-white font-bold px-3 py-1.5 rounded-lg">保存</button>
+                            <button onClick={() => setEditingAdvId(null)} className="text-xs text-sub px-3 py-1.5">取消</button>
+                          </div>
                         </div>
-                      </div>
-                      <div className="font-inter text-sm font-bold text-green shrink-0">
-                        ¥{a.amount.toLocaleString()}
-                      </div>
-                      <button
-                        onClick={() => handleDeleteAdvance(a.id)}
-                        className="shrink-0 text-xs text-sub hover:text-red-500"
-                      >
-                        削除
-                      </button>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold">{a.payer_name}</div>
+                            <div className="text-xs text-sub">
+                              {a.description || '立替'} ・ {a.split_target === 'all' ? '全員で割り勘' : a.target_names?.join('、')}
+                            </div>
+                          </div>
+                          <div className="font-inter text-sm font-bold text-green shrink-0">
+                            ¥{a.amount.toLocaleString()}
+                          </div>
+                          <button
+                            onClick={() => { setEditingAdvId(a.id); setEditAdvAmount(String(a.amount)); setEditAdvDesc(a.description || '') }}
+                            className="shrink-0 text-xs text-sub hover:text-green"
+                          >
+                            編集
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAdvance(a.id)}
+                            className="shrink-0 text-xs text-sub hover:text-red-500"
+                          >
+                            削除
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
