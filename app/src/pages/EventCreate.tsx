@@ -73,22 +73,22 @@ export default function EventCreate() {
               <div>
                 <label className="text-xs font-semibold text-sub mb-1 block">イベント名 *</label>
                 <input value={title} onChange={(e) => setTitle(e.target.value)}
-                  placeholder="渋谷で忘年会" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
+                  placeholder="例：新年会、歓迎会、合宿など" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-sub mb-1 block">お店の名前</label>
                 <input value={venueName} onChange={(e) => setVenueName(e.target.value)}
-                  placeholder="個室居酒屋 鳥貴族 渋谷店" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
+                  placeholder="例：居酒屋○○ 渋谷店" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-sub mb-1 block">住所・最寄り駅</label>
                 <input value={venueAddress} onChange={(e) => setVenueAddress(e.target.value)}
-                  placeholder="渋谷駅 徒歩3分" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
+                  placeholder="例：渋谷駅 徒歩5分" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-sub mb-1 block">日時</label>
                 <input value={eventDate} onChange={(e) => setEventDate(e.target.value)}
-                  placeholder="2025年12月20日（土）19:00〜" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
+                  placeholder="例：2026年5月10日（土）19:00〜" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-sub mb-1 block">参加費（一人あたり）</label>
@@ -98,7 +98,7 @@ export default function EventCreate() {
               <div>
                 <label className="text-xs font-semibold text-sub mb-1 block">メモ（任意）</label>
                 <input value={memo} onChange={(e) => setMemo(e.target.value)}
-                  placeholder="2次会も考えてます！" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
+                  placeholder="例：二次会あり、ドレスコードなし" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
               </div>
             </div>
 
