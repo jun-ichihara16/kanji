@@ -60,18 +60,6 @@ export default function AdvancePaymentForm({
         </select>
       </div>
 
-      {/* Amount */}
-      <div className="mb-3">
-        <label className="text-xs font-semibold text-sub mb-1 block">金額（円）</label>
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="3000"
-          className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
-        />
-      </div>
-
       {/* Description */}
       <div className="mb-3">
         <label className="text-xs font-semibold text-sub mb-1 block">何の支払い？</label>
@@ -81,6 +69,18 @@ export default function AdvancePaymentForm({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="例: 二次会代、タクシー代"
           className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
+        />
+      </div>
+
+      {/* Amount */}
+      <div className="mb-3">
+        <label className="text-xs font-semibold text-sub mb-1 block">金額（円）</label>
+        <input
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="3000"
+          className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
         />
       </div>
 
