@@ -68,14 +68,16 @@ serve(async (req) => {
     // usersテーブルにupsert
     const { data: existingUser } = await supabaseAdmin
       .from('users')
-      .select('id')
+      .select('id, onboarding_completed')
       .eq('line_user_id', profile.userId)
       .single()
 
     let userId: string
+    let onboardingCompleted = false
 
     if (existingUser) {
       userId = existingUser.id
+      onboardingCompleted = existingUser.onboarding_completed ?? false
       // 表示名を更新
       await supabaseAdmin
         .from('users')
@@ -90,6 +92,7 @@ serve(async (req) => {
           line_user_id: profile.userId,
           display_name: profile.displayName,
           avatar_url: profile.pictureUrl,
+          onboarding_completed: false,
         })
         .select('id')
         .single()
@@ -102,6 +105,7 @@ serve(async (req) => {
         )
       }
       userId = newUser.id
+      onboardingCompleted = false
     }
 
     return new Response(
@@ -110,6 +114,7 @@ serve(async (req) => {
           id: userId,
           displayName: profile.displayName,
           avatarUrl: profile.pictureUrl,
+          onboardingCompleted,
         },
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

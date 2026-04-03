@@ -7,6 +7,7 @@ import EventCreate from './pages/EventCreate'
 import EventManage from './pages/EventManage'
 import GuestJoin from './pages/GuestJoin'
 import AuthCallback from './pages/AuthCallback'
+import Onboarding from './pages/Onboarding'
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route
           path="/dashboard"
           element={

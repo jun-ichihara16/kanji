@@ -67,8 +67,12 @@ export default function AuthCallback() {
           setLocalUser(data.user)
           setStatus('ログイン成功！')
           console.log('[AuthCallback] User saved, redirecting...')
-          // Use window.location for full page navigation (more reliable on GitHub Pages)
-          window.location.href = '/kanji/app/dashboard'
+          // 初回ログイン（onboardingCompleted未設定）→ オンボーディングへ
+          if (!data.user.onboardingCompleted) {
+            window.location.href = '/kanji/app/onboarding'
+          } else {
+            window.location.href = '/kanji/app/dashboard'
+          }
           return
         }
 
