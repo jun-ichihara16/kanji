@@ -2,10 +2,11 @@ import { useState, useEffect, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { useEvent, Event, Participant, AdvanceRecord } from '../hooks/useEvent'
 import { calculateSettlements, Advance } from '../lib/settle'
+import { supabase } from '../lib/supabase'
 
 export default function GuestJoin() {
   const { slug } = useParams<{ slug: string }>()
-  const { fetchEventBySlug, fetchParticipants, addParticipant, fetchAdvances, addAdvance } = useEvent()
+  const { fetchEventBySlug, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, fetchAdvances, addAdvance, deleteAdvance } = useEvent()
 
   const [event, setEvent] = useState<Event | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
@@ -16,6 +17,8 @@ export default function GuestJoin() {
   // 参加者登録
   const [joinName, setJoinName] = useState('')
   const [joining, setJoining] = useState(false)
+  const [editingPId, setEditingPId] = useState<string | null>(null)
+  const [editPName, setEditPName] = useState('')
 
   // 立替フォーム
   const [payerName, setPayerName] = useState('')
@@ -68,6 +71,23 @@ export default function GuestJoin() {
       setJoinName('')
     }
     setJoining(false)
+  }
+
+  const handleEditParticipant = async (p: Participant) => {
+    if (!editPName.trim()) { setEditingPId(null); return }
+    await supabase.from('participants').update({ name: editPName.trim() }).eq('id', p.id)
+    setParticipants((prev) => prev.map((pp) => pp.id === p.id ? { ...pp, name: editPName.trim() } : pp))
+    setEditingPId(null)
+  }
+
+  const handleDeleteParticipant = async (p: Participant) => {
+    await deleteParticipant(p.id)
+    setParticipants((prev) => prev.filter((pp) => pp.id !== p.id))
+  }
+
+  const handleDeleteAdvance = async (advId: string) => {
+    await deleteAdvance(advId)
+    setAdvances((prev) => prev.filter((a) => a.id !== advId))
   }
 
   const toggleTarget = (name: string) => {
@@ -177,10 +197,38 @@ export default function GuestJoin() {
               <div className="space-y-1.5 mb-4">
                 {participants.map((p) => (
                   <div key={p.id} className="flex items-center gap-2 p-2.5 bg-white border border-border rounded-xl text-sm">
-                    <div className="w-7 h-7 rounded-full bg-green/10 text-green flex items-center justify-center text-xs font-bold shrink-0">
-                      {p.name.charAt(0)}
-                    </div>
-                    <span className="font-medium">{p.name}</span>
+                    {editingPId === p.id ? (
+                      <>
+                        <input
+                          value={editPName}
+                          onChange={(e) => setEditPName(e.target.value)}
+                          className="flex-1 p-1.5 border border-green rounded-lg text-sm focus:outline-none"
+                          autoFocus
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleEditParticipant(p); if (e.key === 'Escape') setEditingPId(null) }}
+                        />
+                        <button onClick={() => handleEditParticipant(p)} className="text-xs text-green font-bold">保存</button>
+                        <button onClick={() => setEditingPId(null)} className="text-xs text-sub">取消</button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-7 h-7 rounded-full bg-green/10 text-green flex items-center justify-center text-xs font-bold shrink-0">
+                          {p.name.charAt(0)}
+                        </div>
+                        <span className="font-medium flex-1">{p.name}</span>
+                        <button
+                          onClick={() => { setEditingPId(p.id); setEditPName(p.name) }}
+                          className="text-xs text-sub hover:text-green"
+                        >
+                          編集
+                        </button>
+                        <button
+                          onClick={() => handleDeleteParticipant(p)}
+                          className="text-xs text-sub hover:text-red-500"
+                        >
+                          削除
+                        </button>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -319,6 +367,12 @@ export default function GuestJoin() {
                       <div className="font-inter text-sm font-bold text-green shrink-0">
                         ¥{a.amount.toLocaleString()}
                       </div>
+                      <button
+                        onClick={() => handleDeleteAdvance(a.id)}
+                        className="shrink-0 text-xs text-sub hover:text-red-500"
+                      >
+                        削除
+                      </button>
                     </div>
                   ))}
                 </div>
