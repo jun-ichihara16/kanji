@@ -11,6 +11,11 @@ export default function GuestJoin() {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [advances, setAdvances] = useState<AdvanceRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeSection, setActiveSection] = useState<'info' | 'expense' | 'settle'>('info')
+
+  // 参加者登録
+  const [joinName, setJoinName] = useState('')
+  const [joining, setJoining] = useState(false)
 
   // 立替フォーム
   const [payerName, setPayerName] = useState('')
@@ -21,13 +26,8 @@ export default function GuestJoin() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
-  // 参加者登録
-  const [joinName, setJoinName] = useState('')
-  const [joining, setJoining] = useState(false)
-
   const participantNames = useMemo(() => participants.map((p) => p.name), [participants])
 
-  // 精算計算
   const settlements = useMemo(() => {
     if (advances.length === 0 || participantNames.length === 0) return []
     const advs: Advance[] = advances.map((a) => ({
@@ -38,6 +38,8 @@ export default function GuestJoin() {
     }))
     return calculateSettlements(advs, participantNames)
   }, [advances, participantNames])
+
+  const totalAmount = useMemo(() => advances.reduce((sum, a) => sum + a.amount, 0), [advances])
 
   useEffect(() => {
     if (!slug) return
@@ -74,10 +76,6 @@ export default function GuestJoin() {
     )
   }
 
-  const selectAllTargets = () => {
-    setTargetNames([...participantNames])
-  }
-
   const handleSubmitAdvance = async () => {
     if (!event || !payerName || !amount) return
     setSubmitting(true)
@@ -110,249 +108,279 @@ export default function GuestJoin() {
   }
 
   if (!event) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-sub text-sm">
-        イベントが見つかりません
-      </div>
-    )
+    return <div className="flex-1 flex items-center justify-center text-sub text-sm">イベントが見つかりません</div>
   }
 
+  const SECTIONS = [
+    { key: 'info' as const, label: '情報' },
+    { key: 'expense' as const, label: '立替' },
+    { key: 'settle' as const, label: '精算' },
+  ]
+
   return (
-    <div className="flex-1 overflow-y-auto">
-      {/* イベント情報 */}
-      <div className="bg-green-light p-5 mx-4 mt-4 rounded-2xl">
-        <div className="text-lg font-bold mb-3">{event.title}</div>
-        {event.event_date && (
-          <div className="flex items-center gap-2 text-sm text-sub mb-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            {event.event_date}
-          </div>
-        )}
-        {event.venue_name && (
-          <div className="flex items-center gap-2 text-sm text-sub mb-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            {event.venue_name}{event.venue_address && `（${event.venue_address}）`}
-          </div>
-        )}
-        {event.fee_per_person && (
-          <div className="flex items-center gap-2 text-sm text-sub mb-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-            参加費：<strong className="font-inter text-[#1A1A1A]">¥{event.fee_per_person.toLocaleString()}</strong>
-          </div>
-        )}
-        {event.memo && (
-          <div className="flex items-center gap-2 text-sm text-sub">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            {event.memo}
-          </div>
-        )}
-        <div className="text-xs text-sub mt-3 pt-3 border-t border-black/5">
-          参加者：{participantNames.join('、') || 'なし'}
+    <div className="flex-1 flex flex-col">
+      {/* イベントヘッダー */}
+      <div className="bg-green-light px-4 pt-4 pb-3">
+        <h1 className="text-lg font-bold">{event.title}</h1>
+        <div className="flex items-center gap-4 mt-1 text-xs text-sub">
+          {event.event_date && (
+            <span className="flex items-center gap-1">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              {event.event_date}
+            </span>
+          )}
+          <span>{participants.length}人参加</span>
+          {totalAmount > 0 && <span className="font-inter">合計 ¥{totalAmount.toLocaleString()}</span>}
         </div>
       </div>
 
-      {/* 参加者登録 */}
-      <div className="px-4 mt-6">
-        <h2 className="text-base font-bold mb-3 flex items-center gap-2">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-          参加する
-        </h2>
-        <div className="bg-white border border-border rounded-2xl p-4">
-          <div className="flex gap-2">
-            <input
-              value={joinName}
-              onChange={(e) => setJoinName(e.target.value)}
-              placeholder="あなたの名前を入力"
-              className="flex-1 p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
-              onKeyDown={(e) => { if (e.key === 'Enter' && joinName.trim()) handleJoin() }}
-            />
-            <button
-              onClick={handleJoin}
-              disabled={!joinName.trim() || joining}
-              className="shrink-0 px-5 py-3 bg-green text-white text-sm font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
-            >
-              {joining ? '...' : '参加'}
-            </button>
-          </div>
-        </div>
-        {participants.length > 0 && (
-          <div className="mt-3 text-xs text-sub">
-            参加者（{participants.length}人）：{participants.map(p => p.name).join('、')}
-          </div>
-        )}
+      {/* タブ */}
+      <div className="flex border-b border-border bg-white sticky top-[53px] z-40">
+        {SECTIONS.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => setActiveSection(s.key)}
+            className={`flex-1 py-3 text-sm font-semibold border-b-[3px] transition ${
+              activeSection === s.key ? 'text-green border-green' : 'text-sub border-transparent'
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
       </div>
 
-      {/* 立替え登録フォーム */}
-      <div className="px-4 mt-6">
-        <h2 className="text-base font-bold mb-3 flex items-center gap-2">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
-          立替えを登録する
-        </h2>
+      {/* コンテンツ */}
+      <div className="flex-1 overflow-y-auto p-4">
 
-        <div className="bg-white border border-border rounded-2xl p-4 space-y-3">
-          {/* 支払った人 */}
-          <div>
-            <label className="text-xs font-semibold text-sub mb-1 block">支払った人</label>
-            <input
-              list="participant-names"
-              value={payerName}
-              onChange={(e) => setPayerName(e.target.value)}
-              placeholder="名前を入力"
-              className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
-            />
-            <datalist id="participant-names">
-              {participantNames.map((n) => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
-          </div>
+        {/* 情報タブ */}
+        {activeSection === 'info' && (
+          <>
+            {/* イベント詳細 */}
+            <div className="bg-white border border-border rounded-2xl p-4 mb-4">
+              {event.venue_name && (
+                <div className="flex items-center gap-2 text-sm text-sub mb-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {event.venue_name}{event.venue_address && `（${event.venue_address}）`}
+                </div>
+              )}
+              {event.memo && (
+                <div className="flex items-center gap-2 text-sm text-sub">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  {event.memo}
+                </div>
+              )}
+            </div>
 
-          {/* 金額 */}
-          <div>
-            <label className="text-xs font-semibold text-sub mb-1 block">金額（円）</label>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="3000"
-              className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
-            />
-          </div>
+            {/* 参加者一覧 */}
+            <h3 className="text-sm font-bold mb-2">参加者（{participants.length}人）</h3>
+            {participants.length > 0 ? (
+              <div className="space-y-1.5 mb-4">
+                {participants.map((p) => (
+                  <div key={p.id} className="flex items-center gap-2 p-2.5 bg-white border border-border rounded-xl text-sm">
+                    <div className="w-7 h-7 rounded-full bg-green/10 text-green flex items-center justify-center text-xs font-bold shrink-0">
+                      {p.name.charAt(0)}
+                    </div>
+                    <span className="font-medium">{p.name}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-sub mb-4">まだ参加者がいません</p>
+            )}
 
-          {/* 内容 */}
-          <div>
-            <label className="text-xs font-semibold text-sub mb-1 block">内容</label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="例: 二次会代、タクシー代"
-              className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
-            />
-          </div>
-
-          {/* 割り勘対象 */}
-          <div>
-            <label className="text-xs font-semibold text-sub mb-1 block">割り勘対象</label>
-            <div className="flex gap-2 mb-2">
+            {/* 参加登録 */}
+            <h3 className="text-sm font-bold mb-2">参加する</h3>
+            <div className="flex gap-2">
+              <input
+                value={joinName}
+                onChange={(e) => setJoinName(e.target.value)}
+                placeholder="あなたの名前"
+                className="flex-1 p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
+                onKeyDown={(e) => { if (e.key === 'Enter' && joinName.trim()) handleJoin() }}
+              />
               <button
-                onClick={() => setSplitAll(true)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
-                  splitAll ? 'border-green bg-green-light text-green-dark' : 'border-border text-sub'
-                }`}
+                onClick={handleJoin}
+                disabled={!joinName.trim() || joining}
+                className="shrink-0 px-5 py-3 bg-green text-white text-sm font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
               >
-                全員
-              </button>
-              <button
-                onClick={() => { setSplitAll(false); selectAllTargets() }}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
-                  !splitAll ? 'border-green bg-green-light text-green-dark' : 'border-border text-sub'
-                }`}
-              >
-                選択する
+                {joining ? '...' : '参加'}
               </button>
             </div>
-            {!splitAll && (
-              <div className="space-y-1">
-                <button
-                  onClick={selectAllTargets}
-                  className="text-xs text-green-dark font-semibold mb-1 hover:underline"
+          </>
+        )}
+
+        {/* 立替タブ */}
+        {activeSection === 'expense' && (
+          <>
+            {/* 立替登録フォーム */}
+            <div className="bg-white border border-border rounded-2xl p-4 mb-4">
+              <h3 className="text-sm font-bold mb-3">立替えを登録する</h3>
+
+              <div className="mb-3">
+                <label className="text-xs font-semibold text-sub mb-1 block">支払った人</label>
+                <select
+                  value={payerName}
+                  onChange={(e) => setPayerName(e.target.value)}
+                  className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
                 >
-                  全員を選択
-                </button>
-                <div className="flex flex-wrap gap-1.5">
+                  <option value="">選択してください</option>
                   {participantNames.map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => toggleTarget(n)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-                        targetNames.includes(n)
-                          ? 'bg-green text-white border-green'
-                          : 'bg-gray-bg text-sub border-border'
-                      }`}
-                    >
-                      {n}
-                    </button>
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+                {participantNames.length === 0 && (
+                  <p className="text-xs text-red-400 mt-1">先に「情報」タブで参加者を登録してください</p>
+                )}
+              </div>
+
+              <div className="mb-3">
+                <label className="text-xs font-semibold text-sub mb-1 block">金額（円）</label>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="3000"
+                  className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="text-xs font-semibold text-sub mb-1 block">内容</label>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="例: 居酒屋代、タクシー代"
+                  className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="text-xs font-semibold text-sub mb-1 block">割り勘対象</label>
+                <div className="flex gap-2 mb-2">
+                  <button
+                    onClick={() => setSplitAll(true)}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
+                      splitAll ? 'border-green bg-green-light text-green-dark' : 'border-border text-sub'
+                    }`}
+                  >
+                    全員
+                  </button>
+                  <button
+                    onClick={() => { setSplitAll(false); setTargetNames([...participantNames]) }}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
+                      !splitAll ? 'border-green bg-green-light text-green-dark' : 'border-border text-sub'
+                    }`}
+                  >
+                    選択する
+                  </button>
+                </div>
+                {!splitAll && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {participantNames.map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => toggleTarget(n)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
+                          targetNames.includes(n)
+                            ? 'bg-green text-white border-green'
+                            : 'bg-gray-bg text-sub border-border'
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={handleSubmitAdvance}
+                disabled={!payerName || !amount || submitting}
+                className="w-full py-3.5 bg-green text-white font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
+              >
+                {submitting ? '登録中...' : submitted ? '登録しました！' : '立替えを登録する'}
+              </button>
+            </div>
+
+            {/* 立替一覧 */}
+            {advances.length > 0 && (
+              <>
+                <h3 className="text-sm font-bold mb-2">立替え一覧（{advances.length}件）</h3>
+                <div className="space-y-2">
+                  {advances.map((a) => (
+                    <div key={a.id} className="flex items-center gap-3 p-3 bg-white border border-border rounded-xl">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold">{a.payer_name}</div>
+                        <div className="text-xs text-sub">
+                          {a.description || '立替'} ・ {a.split_target === 'all' ? '全員で割り勘' : a.target_names?.join('、')}
+                        </div>
+                      </div>
+                      <div className="font-inter text-sm font-bold text-green shrink-0">
+                        ¥{a.amount.toLocaleString()}
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </div>
+              </>
             )}
-          </div>
+          </>
+        )}
 
-          {/* 送信 */}
-          <button
-            onClick={handleSubmitAdvance}
-            disabled={!payerName || !amount || submitting}
-            className="w-full py-3.5 bg-green text-white font-bold rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-green-dark transition"
-          >
-            {submitting ? '登録中...' : submitted ? '登録しました！' : '立替えを登録する'}
-          </button>
-        </div>
-      </div>
-
-      {/* 立替え一覧 */}
-      {advances.length > 0 && (
-        <div className="px-4 mt-6">
-          <h2 className="text-base font-bold mb-3 flex items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            立替え一覧（{advances.length}件）
-          </h2>
-          <div className="space-y-2">
-            {advances.map((a) => (
-              <div key={a.id} className="flex items-center gap-3 p-3 bg-white border border-border rounded-xl">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold">{a.payer_name}</div>
-                  <div className="text-xs text-sub">
-                    {a.description || '立替'} ・ {a.split_target === 'all' ? '全員で割り勘' : a.target_names?.join('、')}
-                  </div>
-                </div>
-                <div className="font-inter text-sm font-bold text-green shrink-0">
-                  ¥{a.amount.toLocaleString()}
-                </div>
+        {/* 精算タブ */}
+        {activeSection === 'settle' && (
+          <>
+            {advances.length === 0 ? (
+              <div className="text-center py-12 text-sub text-sm">
+                立替データがありません。<br />「立替」タブで費用を登録してください。
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 精算結果 */}
-      {advances.length > 0 && (
-        <div className="px-4 mt-6 mb-8">
-          <h2 className="text-base font-bold mb-3 flex items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-            精算方法
-          </h2>
-          {settlements.length === 0 ? (
-            <div className="text-center py-6 text-sub text-sm bg-gray-bg rounded-xl">
-              精算は不要です（均等に立替済み）
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {settlements.map((s, i) => {
-                const payee = participants.find((p) => p.name === s.to && p.payment_method === 'paypay')
-                return (
-                  <div key={i} className="bg-white border border-border rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-1 text-sm">
-                      <span className="font-semibold">{s.from}</span>
-                      <span className="text-sub">→</span>
-                      <span className="font-semibold">{s.to}</span>
-                    </div>
-                    <div className="font-inter text-xl font-extrabold text-green">
-                      ¥{s.amount.toLocaleString()}
-                    </div>
-                    {payee?.paypay_phone && (
-                      <div className="mt-1.5 text-xs text-sub flex items-center gap-1">
-                        <img src="/kanji/app/img/paypay.jpg" alt="" width={16} height={16} className="rounded" />
-                        PayPay: {payee.paypay_phone}
+            ) : settlements.length === 0 ? (
+              <div className="text-center py-12 text-sub text-sm">
+                精算は不要です（均等に立替済み）
+              </div>
+            ) : (
+              <>
+                <h3 className="text-sm font-bold mb-3">精算方法</h3>
+                <div className="space-y-2.5 mb-4">
+                  {settlements.map((s, i) => {
+                    const payee = participants.find((p) => p.name === s.to && p.payment_method === 'paypay')
+                    return (
+                      <div key={i} className="bg-white border border-border rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-1 text-sm">
+                          <span className="font-semibold">{s.from}</span>
+                          <span className="text-sub">→</span>
+                          <span className="font-semibold">{s.to}</span>
+                        </div>
+                        <div className="font-inter text-xl font-extrabold text-green">
+                          ¥{s.amount.toLocaleString()}
+                        </div>
+                        {payee?.paypay_phone && (
+                          <div className="mt-1.5 text-xs text-sub flex items-center gap-1">
+                            <img src="/kanji/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
+                            PayPay: {payee.paypay_phone}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
+                    )
+                  })}
+                </div>
+                <button
+                  onClick={() => {
+                    const text = settlements
+                      .map((s) => `${s.from} → ${s.to}: ¥${s.amount.toLocaleString()}`)
+                      .join('\n')
+                    navigator.clipboard.writeText(text)
+                  }}
+                  className="w-full py-3 border-2 border-green text-green-dark font-bold rounded-xl text-sm hover:bg-green-light transition"
+                >
+                  精算結果をコピー
+                </button>
+              </>
+            )}
+          </>
+        )}
+
+      </div>
     </div>
   )
 }
