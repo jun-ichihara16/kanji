@@ -60,6 +60,9 @@ jobs:
           cp _site/app/index.html _site/app/events/new/index.html
           mkdir -p _site/app/onboarding
           cp _site/app/index.html _site/app/onboarding/index.html
+          mkdir -p _site/app/e
+          cp _site/app/index.html _site/app/e/index.html
+          cp _site/app/404.html _site/404.html
 
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
