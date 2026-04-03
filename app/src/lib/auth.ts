@@ -14,7 +14,6 @@ export function loginWithLINE() {
 
   sessionStorage.setItem('line_oauth_state', state)
 
-  // スマホ判定
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
   const params = [
@@ -24,18 +23,16 @@ export function loginWithLINE() {
     `state=${state}`,
     `scope=profile%20openid`,
     `nonce=${nonce}`,
-    `bot_prompt=aggressive`,
   ]
 
-  // スマホではLINEアプリ内ブラウザで開く
   if (isMobile) {
-    params.push('prompt=consent')
-    params.push('initial_amr_display=lineqr')
+    // スマホ: LINEアプリ内で認証（QR画面をスキップ）
+    params.push('disable_auto_login=false')
+    params.push('bot_prompt=aggressive')
   }
 
-  const url = `https://access.line.me/oauth2/v2.1/authorize?${params.join('&')}`
-
-  window.location.href = url
+  const authUrl = `https://access.line.me/oauth2/v2.1/authorize?${params.join('&')}`
+  window.location.href = authUrl
 }
 
 /**
