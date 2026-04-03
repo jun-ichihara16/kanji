@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useEvent, Event, Participant, AdvanceRecord } from '../hooks/useEvent'
 import { calculateSettlements, Settlement, Advance } from '../lib/settle'
+import { supabase } from '../lib/supabase'
 import ParticipantCard from '../components/ParticipantCard'
 import SummaryCard from '../components/SummaryCard'
 import PayPayList from '../components/PayPayList'
@@ -23,10 +24,12 @@ export default function EventManage() {
   const [settlements, setSettlements] = useState<Settlement[]>([])
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>('参加者')
   const [loading, setLoading] = useState(true)
-  const [bulkNames, setBulkNames] = useState('')
+  const [newName, setNewName] = useState('')
+  const [newPaypay, setNewPaypay] = useState('')
   const [addingParticipant, setAddingParticipant] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+  const [editPaypay, setEditPaypay] = useState('')
 
   const load = async () => {
     if (!id) return
@@ -43,35 +46,37 @@ export default function EventManage() {
 
   useEffect(() => { load() }, [id])
 
-  const handleBulkAdd = async () => {
-    if (!id || !bulkNames.trim()) return
+  const handleAddOne = async () => {
+    if (!id || !newName.trim()) return
     setAddingParticipant(true)
-    // カンマ、改行、スペースで分割
-    const names = bulkNames
-      .split(/[,、\n\r]+/)
-      .map((n) => n.trim())
-      .filter((n) => n.length > 0)
-    for (const name of names) {
-      const { data: newP } = await addParticipant(id, {
-        name,
-        payment_method: 'cash',
-      })
-      if (newP) {
-        setParticipants((prev) => [...prev, newP])
-      }
+    const { data: newP } = await addParticipant(id, {
+      name: newName.trim(),
+      payment_method: newPaypay.trim() ? 'paypay' : 'cash',
+      paypay_phone: newPaypay.trim() || undefined,
+    })
+    if (newP) {
+      setParticipants((prev) => [...prev, newP])
+      setNewName('')
+      setNewPaypay('')
     }
-    setBulkNames('')
     setAddingParticipant(false)
   }
 
-  const handleRename = async (p: Participant) => {
-    if (!editName.trim() || editName.trim() === p.name) {
-      setEditingId(null)
-      return
-    }
+  const handleSaveEdit = async (p: Participant) => {
+    if (!editName.trim()) { setEditingId(null); return }
     await updateParticipantName(p.id, editName.trim())
+    // PayPay番号も更新
+    await supabase.from('participants').update({
+      paypay_phone: editPaypay.trim() || null,
+      payment_method: editPaypay.trim() ? 'paypay' : 'cash',
+    }).eq('id', p.id)
     setParticipants((prev) =>
-      prev.map((pp) => (pp.id === p.id ? { ...pp, name: editName.trim() } : pp))
+      prev.map((pp) => (pp.id === p.id ? {
+        ...pp,
+        name: editName.trim(),
+        paypay_phone: editPaypay.trim() || null,
+        payment_method: editPaypay.trim() ? 'paypay' : 'cash',
+      } : pp))
     )
     setEditingId(null)
   }
@@ -165,21 +170,28 @@ export default function EventManage() {
         {/* TAB: 参加者 */}
         {activeTab === '参加者' && (
           <>
-            {/* 一括追加フォーム */}
+            {/* 一名ずつ追加フォーム */}
             <div className="bg-white border border-border rounded-2xl p-4 mb-4">
-              <h3 className="text-sm font-bold mb-1">参加者を追加</h3>
-              <p className="text-xs text-sub mb-2">カンマ区切り or 改行で複数人まとめて追加</p>
-              <textarea
-                value={bulkNames}
-                onChange={(e) => setBulkNames(e.target.value)}
-                placeholder={"田中太郎, 鈴木花子, 佐藤健"}
-                rows={2}
-                className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green resize-none"
-              />
+              <h3 className="text-sm font-bold mb-3">参加者を追加</h3>
+              <div className="space-y-2">
+                <input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="名前"
+                  className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
+                  onKeyDown={(e) => { if (e.key === 'Enter' && newName.trim()) handleAddOne() }}
+                />
+                <input
+                  value={newPaypay}
+                  onChange={(e) => setNewPaypay(e.target.value)}
+                  placeholder="PayPay番号（任意）例: 09012345678"
+                  className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
+                />
+              </div>
               <button
-                onClick={handleBulkAdd}
-                disabled={!bulkNames.trim() || addingParticipant}
-                className="w-full mt-2 py-3 bg-green text-white text-sm font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
+                onClick={handleAddOne}
+                disabled={!newName.trim() || addingParticipant}
+                className="w-full mt-3 py-3 bg-green text-white text-sm font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
               >
                 {addingParticipant ? '追加中...' : '追加する'}
               </button>
@@ -190,27 +202,39 @@ export default function EventManage() {
               {participants.map((p) => (
                 <div key={p.id} className="flex items-center gap-2 p-3 bg-white border border-border rounded-xl">
                   {editingId === p.id ? (
-                    <>
+                    <div className="flex-1 space-y-2">
                       <input
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        className="flex-1 p-2 border border-green rounded-lg text-sm focus:outline-none"
+                        placeholder="名前"
+                        className="w-full p-2 border border-green rounded-lg text-sm focus:outline-none"
                         autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleRename(p)
-                          if (e.key === 'Escape') setEditingId(null)
-                        }}
+                        onKeyDown={(e) => { if (e.key === 'Escape') setEditingId(null) }}
                       />
-                      <button onClick={() => handleRename(p)} className="text-xs text-green font-bold px-2 py-1">保存</button>
-                      <button onClick={() => setEditingId(null)} className="text-xs text-sub px-2 py-1">取消</button>
-                    </>
+                      <input
+                        value={editPaypay}
+                        onChange={(e) => setEditPaypay(e.target.value)}
+                        placeholder="PayPay番号（任意）"
+                        className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter"
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={() => handleSaveEdit(p)} className="text-xs bg-green text-white font-bold px-3 py-1.5 rounded-lg">保存</button>
+                        <button onClick={() => setEditingId(null)} className="text-xs text-sub px-3 py-1.5">取消</button>
+                      </div>
+                    </div>
                   ) : (
                     <>
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm font-semibold">{p.name}</span>
+                        <div className="text-sm font-semibold">{p.name}</div>
+                        {p.paypay_phone && (
+                          <div className="text-xs text-sub font-inter flex items-center gap-1 mt-0.5">
+                            <img src="/kanji/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
+                            {p.paypay_phone}
+                          </div>
+                        )}
                       </div>
                       <button
-                        onClick={() => { setEditingId(p.id); setEditName(p.name) }}
+                        onClick={() => { setEditingId(p.id); setEditName(p.name); setEditPaypay(p.paypay_phone || '') }}
                         className="shrink-0 text-xs text-sub hover:text-green transition px-1.5 py-1"
                       >
                         編集
