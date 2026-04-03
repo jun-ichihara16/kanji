@@ -102,8 +102,15 @@ export default function AdvancePaymentForm({
               <input
                 type="checkbox"
                 checked={splitTarget === 'all' || targetNames.includes(n)}
-                disabled={splitTarget === 'all'}
-                onChange={() => { if (splitTarget === 'all') { setSplitTarget('specific'); setTargetNames([n]) } else { toggleTarget(n) } }}
+                onChange={() => {
+                  if (splitTarget === 'all') {
+                    const others = participantNames.filter((x) => x !== n)
+                    setSplitTarget('specific')
+                    setTargetNames(others)
+                  } else {
+                    toggleTarget(n)
+                  }
+                }}
                 className="w-4 h-4 accent-green shrink-0"
               />
               <span className={`text-sm truncate ${splitTarget === 'all' ? 'text-sub' : 'font-medium'}`}>{n}</span>

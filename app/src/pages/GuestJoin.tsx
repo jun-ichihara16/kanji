@@ -362,8 +362,16 @@ export default function GuestJoin() {
                       <input
                         type="checkbox"
                         checked={splitAll || targetNames.includes(n)}
-                        disabled={splitAll}
-                        onChange={() => { if (splitAll) { setSplitAll(false); setTargetNames([n]) } else { toggleTarget(n) } }}
+                        onChange={() => {
+                          if (splitAll) {
+                            // 全員モードから個別モードへ：クリックした人以外を全選択
+                            const others = participantNames.filter((x) => x !== n)
+                            setSplitAll(false)
+                            setTargetNames(others)
+                          } else {
+                            toggleTarget(n)
+                          }
+                        }}
                         className="w-4 h-4 accent-green shrink-0"
                       />
                       <span className={`text-sm truncate ${splitAll ? 'text-sub' : 'font-medium'}`}>{n}</span>
