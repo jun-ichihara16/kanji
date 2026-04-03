@@ -356,7 +356,7 @@ export default function GuestJoin() {
                 {!splitAll && participantNames.length === 0 && (
                   <p className="text-xs text-red-400">先に「情報」タブで参加者を登録してください</p>
                 )}
-                <div className="space-y-1.5">
+                <div className="grid grid-cols-2 gap-1.5">
                   {participantNames.map((n) => (
                     <label key={n} className="flex items-center gap-2 p-2.5 bg-white border border-border rounded-xl cursor-pointer hover:border-green/50 transition">
                       <input
@@ -364,17 +364,15 @@ export default function GuestJoin() {
                         checked={splitAll || targetNames.includes(n)}
                         disabled={splitAll}
                         onChange={() => { if (splitAll) { setSplitAll(false); setTargetNames([n]) } else { toggleTarget(n) } }}
-                        className="w-4 h-4 accent-green"
+                        className="w-4 h-4 accent-green shrink-0"
                       />
-                      <span className={`text-sm ${splitAll ? 'text-sub' : 'font-medium'}`}>{n}</span>
+                      <span className={`text-sm truncate ${splitAll ? 'text-sub' : 'font-medium'}`}>{n}</span>
                     </label>
                   ))}
                 </div>
                 {!splitAll && targetNames.length > 0 && (
                   <p className="text-xs text-sub mt-1.5">{targetNames.length}人選択中</p>
                 )}
-                        }`}
-                      >
               </div>
 
               <button

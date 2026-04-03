@@ -96,7 +96,7 @@ export default function AdvancePaymentForm({
           />
           <span className="text-sm font-semibold">全員で割り勘</span>
         </label>
-        <div className="space-y-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           {participantNames.map((n) => (
             <label key={n} className="flex items-center gap-2 p-2.5 bg-white border border-border rounded-xl cursor-pointer hover:border-green/50 transition">
               <input
@@ -104,9 +104,9 @@ export default function AdvancePaymentForm({
                 checked={splitTarget === 'all' || targetNames.includes(n)}
                 disabled={splitTarget === 'all'}
                 onChange={() => { if (splitTarget === 'all') { setSplitTarget('specific'); setTargetNames([n]) } else { toggleTarget(n) } }}
-                className="w-4 h-4 accent-green"
+                className="w-4 h-4 accent-green shrink-0"
               />
-              <span className={`text-sm ${splitTarget === 'all' ? 'text-sub' : 'font-medium'}`}>{n}</span>
+              <span className={`text-sm truncate ${splitTarget === 'all' ? 'text-sub' : 'font-medium'}`}>{n}</span>
             </label>
           ))}
         </div>
