@@ -541,13 +541,13 @@ export default function GuestJoin() {
                         {/* 精算完了ボタン */}
                         <button
                           onClick={() => setSettledMap((prev) => ({ ...prev, [key]: !prev[key] }))}
-                          className={`w-full py-3 text-sm font-bold border-t transition ${
+                          className={`w-full py-4 text-sm font-bold border-t transition ${
                             isSettled
                               ? 'bg-gray-bg text-sub border-border'
-                              : 'bg-green-light text-green-dark border-green/20 hover:bg-green/10'
+                              : 'bg-green text-white border-green hover:bg-green-dark'
                           }`}
                         >
-                          {isSettled ? '✓ 精算済み（タップで取り消し）' : '精算完了にする'}
+                          {isSettled ? '✓ 精算済み（タップで取り消し）' : '✅ 精算完了にする'}
                         </button>
                       </div>
                     )
