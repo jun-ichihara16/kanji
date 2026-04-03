@@ -64,12 +64,13 @@ export default function EventManage() {
 
   const handleSaveEdit = async (p: Participant) => {
     if (!editName.trim()) { setEditingId(null); return }
-    await updateParticipantName(p.id, editName.trim())
-    // PayPay番号も更新
-    await supabase.from('participants').update({
+    // 名前・PayPay・支払い方法を1回のUPDATEで保存
+    const { error } = await supabase.from('participants').update({
+      name: editName.trim(),
       paypay_phone: editPaypay.trim() || null,
       payment_method: editPaypay.trim() ? 'paypay' : 'cash',
     }).eq('id', p.id)
+    if (error) { console.error('Update error:', error); alert('更新エラー: ' + error.message); return }
     setParticipants((prev) =>
       prev.map((pp) => (pp.id === p.id ? {
         ...pp,
@@ -221,7 +222,7 @@ export default function EventManage() {
                         placeholder="名前"
                         className="w-full p-2 border border-green rounded-lg text-sm focus:outline-none"
                         autoFocus
-                        onKeyDown={(e) => { if (e.key === 'Escape') setEditingId(null) }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(p); if (e.key === 'Escape') setEditingId(null) }}
                       />
                       <input
                         value={editPaypay}
