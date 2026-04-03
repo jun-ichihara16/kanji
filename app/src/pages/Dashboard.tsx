@@ -12,7 +12,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user?.id) return
+    console.log('[Dashboard] Loading events for user:', user.id)
     fetchMyEvents(user.id).then(async ({ data }) => {
+      console.log('[Dashboard] Events found:', data?.length)
       if (data) {
         setEvents(data)
         const s: Record<string, { total: number; paid: number }> = {}

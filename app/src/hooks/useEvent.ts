@@ -37,11 +37,23 @@ export interface AdvanceRecord {
 
 export function useEvent() {
   async function fetchMyEvents(userId: string) {
-    const { data, error } = await supabase
+    // まずhost_idで検索
+    let { data, error } = await supabase
       .from('events')
       .select('*')
       .eq('host_id', userId)
       .order('created_at', { ascending: false })
+
+    // 見つからない場合、host_id=nullのイベントも取得（旧データ対応）
+    if (!data || data.length === 0) {
+      const res = await supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false })
+      data = res.data
+      error = res.error
+    }
+
     return { data: data as Event[] | null, error }
   }
 
