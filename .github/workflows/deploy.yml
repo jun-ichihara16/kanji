@@ -1,0 +1,57 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Build React app
+      - name: Install & Build React App
+        working-directory: app
+        run: |
+          npm ci
+          npm run build
+        env:
+          VITE_SUPABASE_URL: https://kdaeebtjwnxerebxmjcs.supabase.co
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_LINE_CHANNEL_ID: "2009684655"
+
+      # Combine: LP (root) + React app (app/)
+      - name: Prepare deploy directory
+        run: |
+          mkdir -p _site/app
+          # Copy LP files
+          cp index.html _site/
+          cp app.html _site/
+          cp -r 05_img _site/
+          cp -r 04_brand _site/
+          # Copy React build
+          cp -r app/dist/* _site/app/
+
+      - uses: actions/configure-pages@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - uses: actions/deploy-pages@v4
+        id: deployment
