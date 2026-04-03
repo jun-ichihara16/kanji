@@ -46,6 +46,7 @@ jobs:
           cp app.html _site/
           cp privacy.html _site/
           cp terms.html _site/
+          cp contact.html _site/
           cp -r 05_img _site/
           cp -r 04_brand _site/
           # Copy React build
