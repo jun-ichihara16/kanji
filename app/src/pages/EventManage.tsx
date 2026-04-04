@@ -3,11 +3,9 @@ import { useParams } from 'react-router-dom'
 import { useEvent, Event, Participant, AdvanceRecord, SettlementRecord } from '../hooks/useEvent'
 import { calculateSettlements, Settlement, Advance } from '../lib/settle'
 import { supabase } from '../lib/supabase'
-import ParticipantCard from '../components/ParticipantCard'
 import SummaryCard from '../components/SummaryCard'
-import PayPayList from '../components/PayPayList'
 import AdvancePaymentForm from '../components/AdvancePaymentForm'
-import SettlementList from '../components/SettlementList'
+import { QRCodeSVG } from 'qrcode.react'
 
 const TABS = ['参加者', '立替'] as const
 
@@ -35,6 +33,8 @@ export default function EventManage() {
   const [newPayMethod, setNewPayMethod] = useState('paypay')
   const [settledMap, setSettledMap] = useState<Record<string, boolean>>({})
   const [settlementRecords, setSettlementRecords] = useState<SettlementRecord[]>([])
+  const [showQR, setShowQR] = useState(false)
+  const [urlCopied, setUrlCopied] = useState(false)
   const [editingAdvId, setEditingAdvId] = useState<string | null>(null)
   const [editAdvAmount, setEditAdvAmount] = useState('')
   const [editAdvDesc, setEditAdvDesc] = useState('')
@@ -326,20 +326,6 @@ export default function EventManage() {
             </div>
             <div className="text-xs text-sub text-center mb-4">{participants.length}人 登録済み</div>
 
-            <div className="bg-gray-bg rounded-xl p-3 mb-3">
-              <p className="text-xs text-sub mb-2">参加者URL（LINEで共有）</p>
-              <div className="flex gap-2">
-                <span className="flex-1 font-inter text-[11px] text-[#1A1A1A] truncate bg-white border border-border rounded-lg px-2.5 py-2">
-                  {shareUrl}
-                </span>
-                <button
-                  onClick={() => navigator.clipboard.writeText(shareUrl)}
-                  className="shrink-0 px-3 py-2 bg-green text-white text-xs font-semibold rounded-lg"
-                >
-                  コピー
-                </button>
-              </div>
-            </div>
 
             {/* 精算状況サマリー（自動計算） */}
             {computedSettlements.length > 0 && (
@@ -361,21 +347,35 @@ export default function EventManage() {
                         const isSettled = !!settledMap[key]
                         const p = participants.find((pp) => pp.name === s.to)
                         return (
-                          <div key={i} className={`flex items-center gap-2 p-3 rounded-xl border transition ${isSettled ? 'bg-gray-bg/50 border-border opacity-60' : 'bg-white border-border'}`}>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm"><span className="font-semibold">{s.from}</span> <span className="text-sub">→</span> <span className="font-semibold">{s.to}</span></div>
-                              <div className="text-xs text-sub">
-                                {p?.payment_method === 'paypay' && p.paypay_phone ? `PayPay: ${p.paypay_phone}` : p?.payment_method === 'bank' ? '振込' : '現金'}
+                          <div key={i} className={`rounded-xl border overflow-hidden transition ${isSettled ? 'bg-gray-bg/50 border-border opacity-60' : 'bg-white border-border'}`}>
+                            <div className="p-3">
+                              {/* From → To 左右配置 */}
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-center flex-1">
+                                  <div className="text-xs text-sub">支払う人</div>
+                                  <div className="text-sm font-bold">{s.from}</div>
+                                </div>
+                                <div className="text-sub text-lg px-2">➔</div>
+                                <div className="text-center flex-1">
+                                  <div className="text-xs text-sub">受け取る人</div>
+                                  <div className="text-sm font-bold">{s.to}</div>
+                                </div>
+                              </div>
+                              {/* 金額 */}
+                              <div className={`font-inter text-center text-xl font-extrabold mb-1 ${isSettled ? 'text-sub line-through' : 'text-green'}`}>
+                                ¥{s.amount.toLocaleString()}
+                              </div>
+                              {/* 支払い方法 */}
+                              <div className="text-center text-xs text-sub">
+                                {p?.payment_method === 'paypay' && p.paypay_phone ? `PayPay: ${p.paypay_phone}` : p?.payment_method === 'bank' ? '🏦 振込' : '💴 現金'}
                               </div>
                             </div>
-                            <div className={`font-inter text-sm font-bold shrink-0 ${isSettled ? 'text-sub line-through' : 'text-green'}`}>
-                              ¥{s.amount.toLocaleString()}
-                            </div>
+                            {/* 完了トグル */}
                             <button
                               onClick={() => handleToggleSettled(s.from, s.to, s.amount)}
-                              className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full transition ${isSettled ? 'bg-gray-bg text-sub' : 'bg-green text-white'}`}
+                              className={`w-full min-w-[60px] py-2.5 text-sm font-bold border-t transition ${isSettled ? 'bg-gray-bg text-sub border-border' : 'bg-green text-white border-green hover:bg-green-dark'}`}
                             >
-                              {isSettled ? '済み' : '完了'}
+                              {isSettled ? '✓ 精算済み' : '精算完了にする'}
                             </button>
                           </div>
                         )
@@ -439,6 +439,62 @@ export default function EventManage() {
         )}
 
       </div>
+
+      {/* 固定アクションバー */}
+      <div className="sticky bottom-0 bg-white border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.05)] p-3 flex gap-2 z-40">
+        <a
+          href={`https://line.me/R/msg/text/?${encodeURIComponent(`${event.title}に参加してください！\n${shareUrl}`)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-line text-white text-sm font-bold rounded-xl no-underline hover:brightness-95 transition"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596a.626.626 0 01-.199.031c-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.271.173-.508.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+          LINEで共有
+        </a>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(shareUrl)
+            setUrlCopied(true)
+            setTimeout(() => setUrlCopied(false), 2000)
+          }}
+          className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-white border-2 border-green text-green-dark text-sm font-bold rounded-xl hover:bg-green-light transition"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          {urlCopied ? 'コピー済み ✓' : 'URLコピー'}
+        </button>
+        <button
+          onClick={() => setShowQR(true)}
+          className="flex items-center justify-center w-12 py-3 bg-white border-2 border-border text-sub rounded-xl hover:border-green hover:text-green transition"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><line x1="21" y1="14" x2="21" y2="14.01"/><line x1="21" y1="21" x2="21" y2="21.01"/><line x1="14" y1="21" x2="14" y2="21.01"/></svg>
+        </button>
+      </div>
+
+      {/* QRモーダル */}
+      {showQR && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowQR(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-8 max-w-[320px] w-full text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold mb-1">{event.title}</h3>
+            <p className="text-xs text-sub mb-4">QRコードをスキャンして参加</p>
+            <div className="flex justify-center mb-4">
+              <QRCodeSVG value={shareUrl} size={220} level="M" />
+            </div>
+            <p className="text-[10px] text-sub break-all mb-4">{shareUrl}</p>
+            <button
+              onClick={() => setShowQR(false)}
+              className="w-full py-3 bg-gray-bg text-sub font-semibold rounded-xl hover:bg-border transition"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
