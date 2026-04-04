@@ -133,6 +133,12 @@ document.getElementById('contactForm').addEventListener('submit', async function
     });
 
     if (res.ok) {
+      // メール通知を送信（非同期、失敗してもOK）
+      fetch(SUPABASE_URL + '/functions/v1/notify-contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }).catch(() => {});
       document.getElementById('form-container').style.display = 'none';
       document.getElementById('success-container').style.display = 'block';
     } else {
