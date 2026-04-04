@@ -26,12 +26,14 @@ export function loginWithLINE() {
   ]
 
   if (isMobile) {
-    // スマホ: LINEアプリ内で認証（QR画面をスキップ）
     params.push('disable_auto_login=false')
     params.push('bot_prompt=aggressive')
   }
 
   const authUrl = `https://access.line.me/oauth2/v2.1/authorize?${params.join('&')}`
+
+  // スマホでもPCでも同じURLだが、LINEアプリがインストールされていれば
+  // LINE側が自動的にアプリ内認証にリダイレクトする
   window.location.href = authUrl
 }
 
