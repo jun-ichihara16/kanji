@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { useEvent, Event, Participant, AdvanceRecord } from '../hooks/useEvent'
+import { useEvent, Event, Participant, AdvanceRecord, SettlementRecord } from '../hooks/useEvent'
 import { calculateSettlements, Settlement, Advance } from '../lib/settle'
 import { supabase } from '../lib/supabase'
 import ParticipantCard from '../components/ParticipantCard'
@@ -16,6 +16,7 @@ export default function EventManage() {
   const {
     fetchEventById, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, togglePaid,
     fetchAdvances, addAdvance, deleteAdvance, deleteEvent,
+    fetchSettlements, upsertSettlement,
   } = useEvent()
 
   const [event, setEvent] = useState<Event | null>(null)
@@ -33,24 +34,43 @@ export default function EventManage() {
   const [editMethod, setEditMethod] = useState('cash')
   const [newPayMethod, setNewPayMethod] = useState('paypay')
   const [settledMap, setSettledMap] = useState<Record<string, boolean>>({})
+  const [settlementRecords, setSettlementRecords] = useState<SettlementRecord[]>([])
   const [editingAdvId, setEditingAdvId] = useState<string | null>(null)
   const [editAdvAmount, setEditAdvAmount] = useState('')
   const [editAdvDesc, setEditAdvDesc] = useState('')
 
   const load = async () => {
     if (!id) return
-    const [evRes, partRes, advRes] = await Promise.all([
+    const [evRes, partRes, advRes, settRes] = await Promise.all([
       fetchEventById(id),
       fetchParticipants(id),
       fetchAdvances(id),
+      fetchSettlements(id),
     ])
     if (evRes.data) setEvent(evRes.data)
     if (partRes.data) setParticipants(partRes.data)
     if (advRes.data) setAdvances(advRes.data)
+    if (settRes.data) {
+      setSettlementRecords(settRes.data)
+      const map: Record<string, boolean> = {}
+      settRes.data.forEach((s: SettlementRecord) => { map[`${s.from_name}-${s.to_name}`] = s.is_settled })
+      setSettledMap(map)
+    }
     setLoading(false)
   }
 
   useEffect(() => { load() }, [id])
+
+  // 自動精算計算
+  const computedSettlements = useMemo(() => {
+    if (advances.length === 0 || participants.length === 0) return []
+    const advs: Advance[] = advances.map((a) => ({
+      payerName: a.payer_name, amount: a.amount,
+      splitTarget: a.split_target as 'all' | 'specific',
+      targetNames: a.target_names ?? undefined,
+    }))
+    return calculateSettlements(advs, participants.map((p) => p.name))
+  }, [advances, participants])
 
   const handleAddOne = async () => {
     if (!id || !newName.trim()) return
@@ -127,15 +147,12 @@ export default function EventManage() {
     setAdvances((prev) => prev.filter((a) => a.id !== advId))
   }
 
-  const handleCalculate = () => {
-    const advs: Advance[] = advances.map((a) => ({
-      payerName: a.payer_name,
-      amount: a.amount,
-      splitTarget: a.split_target as 'all' | 'specific',
-      targetNames: a.target_names ?? undefined,
-    }))
-    const names = participants.map((p) => p.name)
-    setSettlements(calculateSettlements(advs, names))
+  const handleToggleSettled = async (fromName: string, toName: string, amount: number) => {
+    if (!id) return
+    const key = `${fromName}-${toName}`
+    const newVal = !settledMap[key]
+    setSettledMap((prev) => ({ ...prev, [key]: newVal }))
+    await upsertSettlement(id, fromName, toName, amount, newVal)
   }
 
   if (loading) {
@@ -324,34 +341,22 @@ export default function EventManage() {
               </div>
             </div>
 
-            {/* 精算状況サマリー */}
-            {advances.length > 0 && (
+            {/* 精算状況サマリー（自動計算） */}
+            {computedSettlements.length > 0 && (
               <div className="mt-4">
                 <h3 className="text-sm font-bold mb-2">精算状況</h3>
                 {(() => {
-                  const advs = advances.map((a) => ({
-                    payerName: a.payer_name, amount: a.amount,
-                    splitTarget: a.split_target as 'all' | 'specific',
-                    targetNames: a.target_names ?? undefined,
-                  }))
-                  const names = participants.map((p) => p.name)
-                  const setts = calculateSettlements(advs, names)
-                  if (setts.length === 0) return (
-                    <div className="bg-green-light rounded-xl p-3 text-center text-sm text-green-dark font-semibold">
-                      ✅ 精算不要（均等に立替済み）
-                    </div>
-                  )
-                  const settledCount = Object.values(settledMap).filter(Boolean).length
+                  const settledCount = computedSettlements.filter((s) => settledMap[`${s.from}-${s.to}`]).length
                   return (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-xs text-sub mb-1">
                         <span>進捗</span>
-                        <span><span className="text-green font-bold">{settledCount}</span> / {setts.length} 件完了</span>
+                        <span><span className="text-green font-bold">{settledCount}</span> / {computedSettlements.length} 件完了</span>
                       </div>
                       <div className="h-1.5 bg-border rounded-full overflow-hidden mb-2">
-                        <div className="h-full bg-green rounded-full transition-all" style={{ width: `${(settledCount / setts.length) * 100}%` }} />
+                        <div className="h-full bg-green rounded-full transition-all" style={{ width: `${(settledCount / computedSettlements.length) * 100}%` }} />
                       </div>
-                      {setts.map((s, i) => {
+                      {computedSettlements.map((s, i) => {
                         const key = `${s.from}-${s.to}`
                         const isSettled = !!settledMap[key]
                         const p = participants.find((pp) => pp.name === s.to)
@@ -367,7 +372,7 @@ export default function EventManage() {
                               ¥{s.amount.toLocaleString()}
                             </div>
                             <button
-                              onClick={() => setSettledMap((prev) => ({ ...prev, [key]: !prev[key] }))}
+                              onClick={() => handleToggleSettled(s.from, s.to, s.amount)}
                               className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full transition ${isSettled ? 'bg-gray-bg text-sub' : 'bg-green text-white'}`}
                             >
                               {isSettled ? '済み' : '完了'}

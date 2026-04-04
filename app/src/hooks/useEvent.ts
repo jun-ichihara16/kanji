@@ -24,6 +24,16 @@ export interface Participant {
   created_at: string
 }
 
+export interface SettlementRecord {
+  id: string
+  event_id: string
+  from_name: string
+  to_name: string
+  amount: number
+  is_settled: boolean
+  created_at: string
+}
+
 export interface AdvanceRecord {
   id: string
   event_id: string
@@ -176,6 +186,30 @@ export function useEvent() {
     return { error }
   }
 
+  // === Settlements ===
+  async function fetchSettlements(eventId: string) {
+    const { data, error } = await supabase
+      .from('settlements')
+      .select('*')
+      .eq('event_id', eventId)
+    return { data: data as SettlementRecord[] | null, error }
+  }
+
+  async function upsertSettlement(eventId: string, fromName: string, toName: string, amount: number, isSettled: boolean) {
+    const { data, error } = await supabase
+      .from('settlements')
+      .upsert({
+        event_id: eventId,
+        from_name: fromName,
+        to_name: toName,
+        amount,
+        is_settled: isSettled,
+      }, { onConflict: 'event_id,from_name,to_name' })
+      .select()
+      .single()
+    return { data: data as SettlementRecord | null, error }
+  }
+
   return {
     fetchMyEvents,
     fetchEventBySlug,
@@ -190,5 +224,7 @@ export function useEvent() {
     fetchAdvances,
     addAdvance,
     deleteAdvance,
+    fetchSettlements,
+    upsertSettlement,
   }
 }

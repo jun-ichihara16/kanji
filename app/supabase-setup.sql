@@ -1,14 +1,15 @@
 -- =============================================
--- KANJI Supabase テーブル作成 & RLS設定
--- Supabase Dashboard > SQL Editor で実行してください
+-- AI KANJI Supabase テーブル作成 & RLS設定
+-- Supabase Dashboard > SQL Editor で実行
 -- =============================================
 
 -- ユーザー
 create table if not exists users (
-  id uuid references auth.users primary key,
+  id uuid primary key default gen_random_uuid(),
   line_user_id text unique,
   display_name text,
   avatar_url text,
+  onboarding_completed boolean default false,
   created_at timestamptz default now()
 );
 
@@ -16,13 +17,14 @@ create table if not exists users (
 create table if not exists events (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,
-  host_id uuid references users(id),
+  host_id uuid,
   title text not null,
   venue_name text,
   venue_address text,
   event_date text,
   fee_per_person integer,
   memo text,
+  line_group_id text,
   created_at timestamptz default now()
 );
 
@@ -49,51 +51,56 @@ create table if not exists advances (
   created_at timestamptz default now()
 );
 
+-- 精算状態
+create table if not exists settlements (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid references events(id) on delete cascade,
+  from_name text not null,
+  to_name text not null,
+  amount integer not null,
+  is_settled boolean default false,
+  created_at timestamptz default now(),
+  unique (event_id, from_name, to_name)
+);
+
+-- お問い合わせ
+create table if not exists contacts (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  email text not null,
+  category text,
+  message text not null,
+  created_at timestamptz default now()
+);
+
 -- =============================================
 -- RLS ポリシー
 -- =============================================
 
--- users
+-- users: SELECT/UPDATEは全開放（Supabase Auth未使用のため）
 alter table users enable row level security;
-create policy "users_self" on users
-  using (auth.uid() = id)
-  with check (auth.uid() = id);
+create policy "users_all" on users for all using (true) with check (true);
 
--- events
+-- events: 誰でもSELECT可。INSERT/UPDATE/DELETEも全開放（認証がlocalStorageのため）
 alter table events enable row level security;
-create policy "events_host_all" on events
-  for all using (auth.uid() = host_id)
-  with check (auth.uid() = host_id);
-create policy "events_public_read" on events
-  for select using (true);
+create policy "events_select" on events for select using (true);
+create policy "events_insert" on events for insert with check (true);
+create policy "events_update" on events for update using (true) with check (true);
+create policy "events_delete" on events for delete using (true);
 
--- participants
+-- participants: 全操作可（ゲストがURL経由で操作するため）
 alter table participants enable row level security;
-create policy "participants_host_all" on participants
-  for all using (
-    auth.uid() = (select host_id from events where id = event_id)
-  )
-  with check (
-    auth.uid() = (select host_id from events where id = event_id)
-  );
-create policy "participants_insert_public" on participants
-  for insert with check (true);
-create policy "participants_select_public" on participants
-  for select using (true);
-create policy "participants_update_public" on participants
-  for update using (true)
-  with check (true);
+create policy "participants_all" on participants for all using (true) with check (true);
 
--- advances
+-- advances: 全操作可
 alter table advances enable row level security;
-create policy "advances_host_all" on advances
-  for all using (
-    auth.uid() = (select host_id from events where id = event_id)
-  )
-  with check (
-    auth.uid() = (select host_id from events where id = event_id)
-  );
-create policy "advances_insert_public" on advances
-  for insert with check (true);
-create policy "advances_select_public" on advances
-  for select using (true);
+create policy "advances_all" on advances for all using (true) with check (true);
+
+-- settlements: 全操作可
+alter table settlements enable row level security;
+create policy "settlements_all" on settlements for all using (true) with check (true);
+
+-- contacts: INSERTのみ公開、SELECTは管理者
+alter table contacts enable row level security;
+create policy "contacts_insert" on contacts for insert with check (true);
+create policy "contacts_select" on contacts for select using (true);

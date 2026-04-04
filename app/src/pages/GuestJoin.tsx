@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { useEvent, Event, Participant, AdvanceRecord } from '../hooks/useEvent'
+import { useEvent, Event, Participant, AdvanceRecord, SettlementRecord } from '../hooks/useEvent'
 import { calculateSettlements, Advance } from '../lib/settle'
 import { supabase } from '../lib/supabase'
 
 export default function GuestJoin() {
   const { slug } = useParams<{ slug: string }>()
-  const { fetchEventBySlug, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, fetchAdvances, addAdvance, deleteAdvance } = useEvent()
+  const { fetchEventBySlug, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, fetchAdvances, addAdvance, deleteAdvance, fetchSettlements, upsertSettlement } = useEvent()
 
   const [event, setEvent] = useState<Event | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
@@ -34,6 +34,17 @@ export default function GuestJoin() {
   const [submitted, setSubmitted] = useState(false)
   const [settledMap, setSettledMap] = useState<Record<string, boolean>>({})
 
+  // 簡易認証: 自分が登録した参加者IDリスト
+  const [myParticipantIds, setMyParticipantIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(`kanji_my_pids_${slug}`) || '[]')
+    } catch { return [] }
+  })
+  const [myName, setMyName] = useState<string>(() => localStorage.getItem(`kanji_my_name_${slug}`) || '')
+
+  const isMyParticipant = (pid: string) => myParticipantIds.includes(pid)
+  const isMyAdvance = (payerName: string) => payerName === myName
+
   // 立替編集
   const [editingAdvId, setEditingAdvId] = useState<string | null>(null)
   const [editAdvAmount, setEditAdvAmount] = useState('')
@@ -59,12 +70,18 @@ export default function GuestJoin() {
     fetchEventBySlug(slug).then(async ({ data: ev }) => {
       if (!ev) { setLoading(false); return }
       setEvent(ev)
-      const [partRes, advRes] = await Promise.all([
+      const [partRes, advRes, settRes] = await Promise.all([
         fetchParticipants(ev.id),
         fetchAdvances(ev.id),
+        fetchSettlements(ev.id),
       ])
       if (partRes.data) setParticipants(partRes.data)
       if (advRes.data) setAdvances(advRes.data)
+      if (settRes.data) {
+        const map: Record<string, boolean> = {}
+        settRes.data.forEach((s: SettlementRecord) => { map[`${s.from_name}-${s.to_name}`] = s.is_settled })
+        setSettledMap(map)
+      }
       setLoading(false)
     })
   }, [slug])
@@ -79,6 +96,12 @@ export default function GuestJoin() {
     })
     if (newP) {
       setParticipants((prev) => [...prev, newP])
+      // 簡易認証: 自分のIDを記録
+      const newIds = [...myParticipantIds, newP.id]
+      setMyParticipantIds(newIds)
+      setMyName(joinName.trim())
+      localStorage.setItem(`kanji_my_pids_${slug}`, JSON.stringify(newIds))
+      localStorage.setItem(`kanji_my_name_${slug}`, joinName.trim())
       setJoinName('')
       setJoinPaypay('')
       setJoinPayMethod('paypay')
@@ -288,18 +311,22 @@ export default function GuestJoin() {
                             {p.payment_method === 'bank' && '🏦 振込'}
                           </div>
                         </div>
-                        <button
-                          onClick={() => { setEditingPId(p.id); setEditPName(p.name); setEditPPaypay(p.paypay_phone || ''); setEditPMethod(p.payment_method) }}
-                          className="text-xs text-sub hover:text-green"
-                        >
-                          編集
-                        </button>
-                        <button
-                          onClick={() => handleDeleteParticipant(p)}
-                          className="text-xs text-sub hover:text-red-500"
-                        >
-                          削除
-                        </button>
+                        {isMyParticipant(p.id) && (
+                          <>
+                            <button
+                              onClick={() => { setEditingPId(p.id); setEditPName(p.name); setEditPPaypay(p.paypay_phone || ''); setEditPMethod(p.payment_method) }}
+                              className="text-xs text-sub hover:text-green"
+                            >
+                              編集
+                            </button>
+                            <button
+                              onClick={() => handleDeleteParticipant(p)}
+                              className="text-xs text-sub hover:text-red-500"
+                            >
+                              削除
+                            </button>
+                          </>
+                        )}
                       </>
                     )}
                   </div>
@@ -496,18 +523,22 @@ export default function GuestJoin() {
                           <div className="font-inter text-sm font-bold text-green shrink-0">
                             ¥{a.amount.toLocaleString()}
                           </div>
-                          <button
-                            onClick={() => { setEditingAdvId(a.id); setEditAdvAmount(String(a.amount)); setEditAdvDesc(a.description || '') }}
-                            className="shrink-0 text-xs text-sub hover:text-green"
-                          >
-                            編集
-                          </button>
-                          <button
-                            onClick={() => handleDeleteAdvance(a.id)}
-                            className="shrink-0 text-xs text-sub hover:text-red-500"
-                          >
-                            削除
-                          </button>
+                          {isMyAdvance(a.payer_name) && (
+                            <button
+                              onClick={() => { setEditingAdvId(a.id); setEditAdvAmount(String(a.amount)); setEditAdvDesc(a.description || '') }}
+                              className="shrink-0 text-xs text-sub hover:text-green"
+                            >
+                              編集
+                            </button>
+                          )}
+                          {isMyAdvance(a.payer_name) && (
+                            <button
+                              onClick={() => handleDeleteAdvance(a.id)}
+                              className="shrink-0 text-xs text-sub hover:text-red-500"
+                            >
+                              削除
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -590,7 +621,12 @@ export default function GuestJoin() {
 
                         {/* 精算完了ボタン */}
                         <button
-                          onClick={() => setSettledMap((prev) => ({ ...prev, [key]: !prev[key] }))}
+                          onClick={async () => {
+                            if (!event) return
+                            const newVal = !settledMap[key]
+                            setSettledMap((prev) => ({ ...prev, [key]: newVal }))
+                            await upsertSettlement(event.id, s.from, s.to, s.amount, newVal)
+                          }}
                           className={`w-full py-4 text-sm font-bold border-t transition ${
                             isSettled
                               ? 'bg-gray-bg text-sub border-border'
