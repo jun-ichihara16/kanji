@@ -311,22 +311,18 @@ export default function GuestJoin() {
                             {p.payment_method === 'bank' && '🏦 振込'}
                           </div>
                         </div>
-                        {isMyParticipant(p.id) && (
-                          <>
-                            <button
-                              onClick={() => { setEditingPId(p.id); setEditPName(p.name); setEditPPaypay(p.paypay_phone || ''); setEditPMethod(p.payment_method) }}
-                              className="text-xs text-sub hover:text-green"
-                            >
-                              編集
-                            </button>
-                            <button
-                              onClick={() => handleDeleteParticipant(p)}
-                              className="text-xs text-sub hover:text-red-500"
-                            >
-                              削除
-                            </button>
-                          </>
-                        )}
+                        <button
+                          onClick={() => { setEditingPId(p.id); setEditPName(p.name); setEditPPaypay(p.paypay_phone || ''); setEditPMethod(p.payment_method) }}
+                          className="text-xs text-sub hover:text-green"
+                        >
+                          編集
+                        </button>
+                        <button
+                          onClick={() => handleDeleteParticipant(p)}
+                          className="text-xs text-sub hover:text-red-500"
+                        >
+                          削除
+                        </button>
                       </>
                     )}
                   </div>
@@ -523,22 +519,18 @@ export default function GuestJoin() {
                           <div className="font-inter text-sm font-bold text-green shrink-0">
                             ¥{a.amount.toLocaleString()}
                           </div>
-                          {isMyAdvance(a.payer_name) && (
-                            <button
-                              onClick={() => { setEditingAdvId(a.id); setEditAdvAmount(String(a.amount)); setEditAdvDesc(a.description || '') }}
-                              className="shrink-0 text-xs text-sub hover:text-green"
-                            >
-                              編集
-                            </button>
-                          )}
-                          {isMyAdvance(a.payer_name) && (
-                            <button
-                              onClick={() => handleDeleteAdvance(a.id)}
-                              className="shrink-0 text-xs text-sub hover:text-red-500"
-                            >
-                              削除
-                            </button>
-                          )}
+                          <button
+                            onClick={() => { setEditingAdvId(a.id); setEditAdvAmount(String(a.amount)); setEditAdvDesc(a.description || '') }}
+                            className="shrink-0 text-xs text-sub hover:text-green"
+                          >
+                            編集
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAdvance(a.id)}
+                            className="shrink-0 text-xs text-sub hover:text-red-500"
+                          >
+                            削除
+                          </button>
                         </div>
                       )}
                     </div>
