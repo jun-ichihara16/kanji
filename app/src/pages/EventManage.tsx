@@ -5,7 +5,7 @@ import { calculateSettlements, Settlement, Advance } from '../lib/settle'
 import { supabase } from '../lib/supabase'
 import SummaryCard from '../components/SummaryCard'
 import AdvancePaymentForm from '../components/AdvancePaymentForm'
-import { QRCodeSVG } from 'qrcode.react'
+import { QRCodeCanvas } from 'qrcode.react'
 
 const TABS = ['参加者', '立替'] as const
 
@@ -477,21 +477,38 @@ export default function EventManage() {
           onClick={() => setShowQR(false)}
         >
           <div
-            className="bg-white rounded-2xl p-8 max-w-[320px] w-full text-center"
+            className="bg-white rounded-2xl p-6 max-w-[320px] w-full text-center"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold mb-1">{event.title}</h3>
             <p className="text-xs text-sub mb-4">QRコードをスキャンして参加</p>
-            <div className="flex justify-center mb-4">
-              <QRCodeSVG value={shareUrl} size={220} level="M" />
+            <div className="flex justify-center mb-3" id="qr-container">
+              <QRCodeCanvas value={shareUrl} size={200} level="M" includeMargin={true} />
             </div>
             <p className="text-[10px] text-sub break-all mb-4">{shareUrl}</p>
-            <button
-              onClick={() => setShowQR(false)}
-              className="w-full py-3 bg-gray-bg text-sub font-semibold rounded-xl hover:bg-border transition"
-            >
-              閉じる
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  const canvas = document.querySelector('#qr-container canvas') as HTMLCanvasElement
+                  if (!canvas) return
+                  const url = canvas.toDataURL('image/png')
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `kanji_qr_${event.title}.png`
+                  a.click()
+                }}
+                className="w-full py-3 bg-green text-white font-bold rounded-xl hover:bg-green-dark transition flex items-center justify-center gap-2"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                画像を保存
+              </button>
+              <button
+                onClick={() => setShowQR(false)}
+                className="w-full py-3 bg-gray-bg text-sub font-semibold rounded-xl hover:bg-border transition"
+              >
+                閉じる
+              </button>
+            </div>
           </div>
         </div>
       )}
