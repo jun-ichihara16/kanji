@@ -281,5 +281,10 @@ export function useEvent() {
     updateUserAdminInfo: async (id: string, tags: string[], memo: string) => supabase.from('users').update({ admin_tags: tags, admin_memo: memo }).eq('id', id),
     updateContactStatus: async (id: string, status: string) => supabase.from('contacts').update({ status }).eq('id', id),
     forceDeleteEvent: async (id: string) => supabase.from('events').delete().eq('id', id),
+    // Admin APIs (Venues)
+    fetchAllVenues: async () => supabase.from('venues').select('*').order('created_at', { ascending: false }),
+    createVenue: async (data: any) => supabase.from('venues').insert(data).select().single(),
+    updateVenue: async (id: string, data: any) => supabase.from('venues').update(data).eq('id', id).select().single(),
+    deleteVenue: async (id: string) => supabase.from('venues').delete().eq('id', id),
   }
 }
