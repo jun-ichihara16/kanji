@@ -271,5 +271,14 @@ export function useEvent() {
     upsertSettlement,
     updateReminderSettings,
     sendGroupReminder,
+    // Admin APIs
+    fetchAllUsers: async () => supabase.from('users').select('*').order('created_at', { ascending: false }),
+    fetchAllEvents: async () => supabase.from('events').select('*').order('created_at', { ascending: false }),
+    fetchAllAdvances: async () => supabase.from('advances').select('*'),
+    fetchAllParticipants: async () => supabase.from('participants').select('*'),
+    fetchAllContacts: async () => supabase.from('contacts').select('*').order('created_at', { ascending: false }),
+    banUser: async (id: string, banned: boolean) => supabase.from('users').update({ is_banned: banned }).eq('id', id),
+    updateContactStatus: async (id: string, status: string) => supabase.from('contacts').update({ status }).eq('id', id),
+    forceDeleteEvent: async (id: string) => supabase.from('events').delete().eq('id', id),
   }
 }

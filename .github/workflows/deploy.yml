@@ -61,6 +61,8 @@ jobs:
           cp _site/app/index.html _site/app/events/new/index.html
           mkdir -p _site/app/onboarding
           cp _site/app/index.html _site/app/onboarding/index.html
+          mkdir -p _site/app/admin _site/app/admin/users _site/app/admin/events _site/app/admin/venues _site/app/admin/inquiries
+          for d in _site/app/admin _site/app/admin/users _site/app/admin/events _site/app/admin/venues _site/app/admin/inquiries; do cp _site/app/index.html $d/index.html; done
           mkdir -p _site/app/e
           cp _site/app/index.html _site/app/e/index.html
           cp _site/app/404.html _site/404.html
