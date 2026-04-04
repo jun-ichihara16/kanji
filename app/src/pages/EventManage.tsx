@@ -13,7 +13,7 @@ export default function EventManage() {
   const { id } = useParams<{ id: string }>()
   const {
     fetchEventById, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, togglePaid,
-    fetchAdvances, addAdvance, deleteAdvance, deleteEvent,
+    fetchAdvances, addAdvance, deleteAdvance, deleteEvent, updateEvent,
     fetchSettlements, upsertSettlement, updateReminderSettings, sendGroupReminder,
   } = useEvent()
 
@@ -38,6 +38,10 @@ export default function EventManage() {
   const [sendingReminder, setSendingReminder] = useState(false)
   const [reminderSent, setReminderSent] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showEditEvent, setShowEditEvent] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDate, setEditDate] = useState('')
+  const [editVenue, setEditVenue] = useState('')
   const [editingAdvId, setEditingAdvId] = useState<string | null>(null)
   const [editAdvAmount, setEditAdvAmount] = useState('')
   const [editAdvDesc, setEditAdvDesc] = useState('')
@@ -150,6 +154,23 @@ export default function EventManage() {
     setAdvances((prev) => prev.filter((a) => a.id !== advId))
   }
 
+  const handleSaveEvent = async () => {
+    if (!id || !editTitle.trim()) return
+    await updateEvent(id, {
+      title: editTitle.trim(),
+      event_date: editDate || undefined,
+      venue_name: editVenue.trim() || undefined,
+    })
+    setEvent((prev) => prev ? { ...prev, title: editTitle.trim(), event_date: editDate || prev.event_date, venue_name: editVenue.trim() || prev.venue_name } : prev)
+    setShowEditEvent(false)
+  }
+
+  const handleArchive = async () => {
+    if (!id || !confirm('このイベントをアーカイブ（完了）にしますか？')) return
+    await updateEvent(id, { status: 'archived' })
+    window.location.href = '/kanji/app/dashboard'
+  }
+
   const handleToggleSettled = async (fromName: string, toName: string, amount: number) => {
     if (!id) return
     const key = `${fromName}-${toName}`
@@ -177,21 +198,69 @@ export default function EventManage() {
     <div className="flex-1 flex flex-col">
       {/* Event title */}
       <div className="px-4 pt-4 pb-2 flex items-start justify-between">
-        <div>
+        <div className="flex-1">
           <h2 className="text-lg font-bold">{event.title}</h2>
-          {event.event_date && <p className="text-xs text-sub mt-0.5">{event.event_date}</p>}
+          <div className="flex items-center gap-2 mt-0.5">
+            {event.event_date && <span className="text-xs text-sub">{event.event_date}</span>}
+            {event.venue_name && <span className="text-xs text-sub">📍 {event.venue_name}</span>}
+          </div>
         </div>
-        <button
-          onClick={async () => {
-            if (!confirm(`「${event.title}」を削除しますか？`)) return
-            await deleteEvent(event.id)
-            window.location.href = '/kanji/app/dashboard'
-          }}
-          className="text-xs text-sub hover:text-red-500 transition mt-1"
-        >
-          削除
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => { setEditTitle(event.title); setEditDate(event.event_date || ''); setEditVenue(event.venue_name || ''); setShowEditEvent(true) }}
+            className="text-xs text-sub hover:text-green transition"
+          >
+            編集
+          </button>
+          <button
+            onClick={handleArchive}
+            className="text-xs text-sub hover:text-amber-500 transition"
+          >
+            完了
+          </button>
+          <button
+            onClick={async () => {
+              if (!confirm(`「${event.title}」を削除しますか？`)) return
+              await deleteEvent(event.id)
+              window.location.href = '/kanji/app/dashboard'
+            }}
+            className="text-xs text-sub hover:text-red-500 transition"
+          >
+            削除
+          </button>
+        </div>
       </div>
+
+      {/* 編集モーダル */}
+      {showEditEvent && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowEditEvent(false)}>
+          <div className="bg-white rounded-2xl p-5 max-w-[340px] w-full" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold mb-4">イベント情報を編集</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-sub mb-1 block">イベント名 *</label>
+                <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-sub mb-1 block">日時</label>
+                <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)}
+                  className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-sub mb-1 block">会場</label>
+                <input value={editVenue} onChange={(e) => setEditVenue(e.target.value)}
+                  placeholder="例: 居酒屋○○"
+                  className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setShowEditEvent(false)} className="flex-1 py-3 bg-gray-bg text-sub rounded-xl text-sm font-semibold">取消</button>
+              <button onClick={handleSaveEvent} disabled={!editTitle.trim()} className="flex-1 py-3 bg-green text-white rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-green-dark transition">保存</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-2 px-4 mb-3">

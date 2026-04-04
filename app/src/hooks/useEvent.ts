@@ -114,6 +114,11 @@ export function useEvent() {
     return { error }
   }
 
+  async function updateEvent(id: string, data: { title?: string; event_date?: string; venue_name?: string; status?: string }) {
+    const { error } = await supabase.from('events').update(data).eq('id', id)
+    return { error }
+  }
+
   async function fetchParticipants(eventId: string) {
     const { data, error } = await supabase
       .from('participants')
@@ -166,6 +171,15 @@ export function useEvent() {
       .select('*')
       .eq('event_id', eventId)
       .order('created_at', { ascending: true })
+    return { data: data as AdvanceRecord[] | null, error }
+  }
+
+  async function fetchAdvancesByEventIds(eventIds: string[]) {
+    if (eventIds.length === 0) return { data: [] as AdvanceRecord[], error: null }
+    const { data, error } = await supabase
+      .from('advances')
+      .select('*')
+      .in('event_id', eventIds)
     return { data: data as AdvanceRecord[] | null, error }
   }
 
@@ -242,6 +256,7 @@ export function useEvent() {
     fetchEventBySlug,
     fetchEventById,
     createEvent,
+    updateEvent,
     deleteEvent,
     fetchParticipants,
     addParticipant,
@@ -249,6 +264,7 @@ export function useEvent() {
     deleteParticipant,
     togglePaid,
     fetchAdvances,
+    fetchAdvancesByEventIds,
     addAdvance,
     deleteAdvance,
     fetchSettlements,
