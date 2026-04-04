@@ -42,6 +42,7 @@ jobs:
         run: |
           mkdir -p _site/app
           # Copy LP files
+          cp CNAME _site/
           cp index.html _site/
           cp app.html _site/
           cp privacy.html _site/
