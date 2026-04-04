@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 import { useEvent, Event, Participant, AdvanceRecord, SettlementRecord } from '../hooks/useEvent'
 import { calculateSettlements, Advance } from '../lib/settle'
 import { supabase } from '../lib/supabase'
 
 export default function GuestJoin() {
   const { slug } = useParams<{ slug: string }>()
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const { fetchEventBySlug, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, fetchAdvances, addAdvance, deleteAdvance, fetchSettlements, upsertSettlement } = useEvent()
 
   const [event, setEvent] = useState<Event | null>(null)
@@ -69,6 +72,11 @@ export default function GuestJoin() {
     if (!slug) return
     fetchEventBySlug(slug).then(async ({ data: ev }) => {
       if (!ev) { setLoading(false); return }
+      // 幹事が自分のイベントURLを開いた場合は管理画面へリダイレクト
+      if (user?.id && ev.host_id === user.id) {
+        navigate(`/events/${ev.id}`, { replace: true })
+        return
+      }
       setEvent(ev)
       const [partRes, advRes, settRes] = await Promise.all([
         fetchParticipants(ev.id),

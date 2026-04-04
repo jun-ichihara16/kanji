@@ -14,7 +14,7 @@ export default function EventManage() {
   const {
     fetchEventById, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, togglePaid,
     fetchAdvances, addAdvance, deleteAdvance, deleteEvent,
-    fetchSettlements, upsertSettlement,
+    fetchSettlements, upsertSettlement, updateReminderSettings, sendGroupReminder,
   } = useEvent()
 
   const [event, setEvent] = useState<Event | null>(null)
@@ -35,6 +35,9 @@ export default function EventManage() {
   const [settlementRecords, setSettlementRecords] = useState<SettlementRecord[]>([])
   const [showQR, setShowQR] = useState(false)
   const [urlCopied, setUrlCopied] = useState(false)
+  const [sendingReminder, setSendingReminder] = useState(false)
+  const [reminderSent, setReminderSent] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [editingAdvId, setEditingAdvId] = useState<string | null>(null)
   const [editAdvAmount, setEditAdvAmount] = useState('')
   const [editAdvDesc, setEditAdvDesc] = useState('')
@@ -441,7 +444,27 @@ export default function EventManage() {
       </div>
 
       {/* 固定アクションバー */}
-      <div className="sticky bottom-0 bg-white border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.05)] p-3 flex gap-2 z-40">
+      <div className="sticky bottom-0 bg-white border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.05)] p-3 space-y-2 z-40">
+        {/* リマインド行 */}
+        {event.line_group_id && computedSettlements.some((s) => !settledMap[`${s.from}-${s.to}`]) && (
+          <button
+            onClick={async () => {
+              setSendingReminder(true)
+              const { ok, data } = await sendGroupReminder(event.id)
+              setSendingReminder(false)
+              if (ok) { setReminderSent(true); setTimeout(() => setReminderSent(false), 3000) }
+              else { alert('送信失敗: ' + (data?.error || 'エラー')) }
+            }}
+            disabled={sendingReminder || reminderSent}
+            className={`w-full py-3 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 ${
+              reminderSent ? 'bg-gray-bg text-sub' : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+            }`}
+          >
+            {sendingReminder ? '送信中...' : reminderSent ? '✓ リマインド送信済み' : '⚡ LINEグループにリマインドを送る'}
+          </button>
+        )}
+        {/* 共有行 */}
+        <div className="flex gap-2">
         <a
           href={`https://line.me/R/msg/text/?${encodeURIComponent(`${event.title}に参加してください！\n${shareUrl}`)}`}
           target="_blank"
@@ -468,6 +491,7 @@ export default function EventManage() {
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><line x1="21" y1="14" x2="21" y2="14.01"/><line x1="21" y1="21" x2="21" y2="21.01"/><line x1="14" y1="21" x2="14" y2="21.01"/></svg>
         </button>
+        </div>
       </div>
 
       {/* QRモーダル */}

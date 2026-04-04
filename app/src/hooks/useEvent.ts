@@ -11,6 +11,9 @@ export interface Event {
   event_date: string | null
   fee_per_person: number | null
   memo: string | null
+  line_group_id: string | null
+  reminder_enabled: boolean
+  reminder_time: string | null
   created_at: string
 }
 
@@ -186,6 +189,30 @@ export function useEvent() {
     return { error }
   }
 
+  // === Reminder ===
+  async function updateReminderSettings(eventId: string, enabled: boolean, time: string) {
+    const { error } = await supabase
+      .from('events')
+      .update({ reminder_enabled: enabled, reminder_time: time })
+      .eq('id', eventId)
+    return { error }
+  }
+
+  async function sendGroupReminder(eventId: string) {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-group-reminder`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({ eventId }),
+    })
+    const data = await res.json()
+    return { ok: res.ok, data }
+  }
+
   // === Settlements ===
   async function fetchSettlements(eventId: string) {
     const { data, error } = await supabase
@@ -226,5 +253,7 @@ export function useEvent() {
     deleteAdvance,
     fetchSettlements,
     upsertSettlement,
+    updateReminderSettings,
+    sendGroupReminder,
   }
 }
