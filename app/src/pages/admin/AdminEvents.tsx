@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useEvent } from '../../hooks/useEvent'
 
+function getSizeBadge(partCount: number, totalAmount: number) {
+  if (partCount >= 20 || totalAmount >= 100000) return { label: 'S', color: 'bg-red-100 text-red-700' }
+  if (partCount >= 10 || totalAmount >= 50000) return { label: 'A', color: 'bg-orange-100 text-orange-700' }
+  if (partCount >= 5 || totalAmount >= 20000) return { label: 'B', color: 'bg-blue-100 text-blue-700' }
+  return { label: 'C', color: 'bg-gray-100 text-gray-700' }
+}
+
 export default function AdminEvents() {
   const { fetchAllEvents, fetchAllUsers, fetchAllParticipants, fetchAllAdvances, forceDeleteEvent } = useEvent()
   const [events, setEvents] = useState<any[]>([])
@@ -22,7 +29,7 @@ export default function AdminEvents() {
   }, [])
 
   const handleDelete = async (e: any) => {
-    if (!confirm(`「${e.title}」を強制削除しますか？`)) return
+    if (!confirm(`「${e.title}」を強制削除しますか？\n関連する参加者・立替データもすべて削除されます。`)) return
     await forceDeleteEvent(e.id)
     setEvents((prev) => prev.filter((x) => x.id !== e.id))
   }
@@ -33,20 +40,35 @@ export default function AdminEvents() {
     <div className="p-4 max-w-[800px] mx-auto">
       <h1 className="text-lg font-bold mb-4">イベント監視（{events.length}件）</h1>
       <div className="space-y-2">
-        {events.map((e) => (
-          <div key={e.id} className="bg-white border border-border rounded-xl p-3">
-            <div className="flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold truncate">{e.title}</div>
-                <div className="text-xs text-sub">
-                  幹事: {e.hostName} ・ {e.partCount}人 ・ ¥{e.totalAmount.toLocaleString()}
+        {events.map((e) => {
+          const size = getSizeBadge(e.partCount, e.totalAmount)
+          const isArchived = e.status === 'archived'
+          return (
+            <div key={e.id} className={`bg-white border rounded-xl p-3 ${isArchived ? 'border-border opacity-70' : 'border-border'}`}>
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                    <span className="text-sm font-semibold truncate">{e.title}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${size.color}`}>{size.label}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                      isArchived ? 'bg-green-light text-green-dark' : 'bg-blue-50 text-blue-700'
+                    }`}>
+                      {isArchived ? '完了' : '進行中'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-sub">
+                    幹事: {e.hostName} ・ {e.event_date || '日程未定'}
+                  </div>
+                  <div className="flex gap-3 mt-1 text-xs text-sub">
+                    <span>👥 {e.partCount}人</span>
+                    <span className="font-inter">💰 ¥{e.totalAmount.toLocaleString()}</span>
+                  </div>
                 </div>
-                <div className="text-xs text-sub">{e.event_date || '日程未定'} ・ {e.status === 'archived' ? '完了' : '進行中'}</div>
+                <button onClick={() => handleDelete(e)} className="text-xs text-red-400 hover:text-red-600 shrink-0 mt-1">削除</button>
               </div>
-              <button onClick={() => handleDelete(e)} className="text-xs text-red-400 hover:text-red-600 shrink-0">削除</button>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

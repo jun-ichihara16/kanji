@@ -278,6 +278,7 @@ export function useEvent() {
     fetchAllParticipants: async () => supabase.from('participants').select('*'),
     fetchAllContacts: async () => supabase.from('contacts').select('*').order('created_at', { ascending: false }),
     banUser: async (id: string, banned: boolean) => supabase.from('users').update({ is_banned: banned }).eq('id', id),
+    updateUserAdminInfo: async (id: string, tags: string[], memo: string) => supabase.from('users').update({ admin_tags: tags, admin_memo: memo }).eq('id', id),
     updateContactStatus: async (id: string, status: string) => supabase.from('contacts').update({ status }).eq('id', id),
     forceDeleteEvent: async (id: string) => supabase.from('events').delete().eq('id', id),
   }
