@@ -30,14 +30,17 @@ export default function Home() {
           AI KANJI
         </div>
         <h1 className="text-2xl font-extrabold leading-snug mb-3">
-          幹事を、もっと<br />
-          <span className="text-green">ラクに。得に。</span>
+          もう、お金の催促で<br />
+          <span className="text-green">嫌な思いはさせません。</span>
         </h1>
         <p className="text-sm text-sub leading-relaxed mb-7">
-          割り勘計算・PayPay番号収集・<br />
-          支払いリマインドが全自動。
+          割り勘計算からPayPay集金、未払い者への<br />
+          リマインドまで。AIがすべて自動で行います。
         </p>
         <LineLoginButton />
+        <p className="text-xs text-sub mt-3 font-medium">
+          完全無料 / LINEで10秒登録 / 友だちにアプリ不要
+        </p>
       </div>
 
       {/* Features */}
@@ -66,10 +69,53 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="px-4 pb-8 mt-auto">
-        <p className="text-center text-xs text-sub mb-3">
-          LINEアカウントで無料で始められます
+      {/* How it works */}
+      <div className="px-4 py-8 bg-white mt-4">
+        <h2 className="text-lg font-bold text-center mb-6">AI KANJIで、幹事の仕事はこう変わります</h2>
+        <div className="space-y-4">
+          <div className="flex gap-4 items-start bg-gray-bg p-4 rounded-xl">
+            <div className="flex-shrink-0 w-8 h-8 bg-green text-white rounded-full flex items-center justify-center font-bold">1</div>
+            <div>
+              <h3 className="font-bold text-sm mb-1">イベントを作ってLINEでシェア</h3>
+              <p className="text-xs text-sub leading-relaxed">幹事の作業はこれだけ。参加者はLINEのリンクからワンタップで参加できます。</p>
+            </div>
+          </div>
+          <div className="flex gap-4 items-start bg-gray-bg p-4 rounded-xl">
+            <div className="flex-shrink-0 w-8 h-8 bg-green text-white rounded-full flex items-center justify-center font-bold">2</div>
+            <div>
+              <h3 className="font-bold text-sm mb-1">参加者が各自で立替を入力</h3>
+              <p className="text-xs text-sub leading-relaxed">レシートを撮影するか、金額を入力するだけ。誰がいくら立て替えたか記録されます。</p>
+            </div>
+          </div>
+          <div className="flex gap-4 items-start bg-gray-bg p-4 rounded-xl">
+            <div className="flex-shrink-0 w-8 h-8 bg-green text-white rounded-full flex items-center justify-center font-bold">3</div>
+            <div>
+              <h3 className="font-bold text-sm mb-1">AIが自動計算＆PayPayで集金</h3>
+              <p className="text-xs text-sub leading-relaxed">イベント終了後、誰が誰にいくら払うかをAIが最適化。ワンタップでPayPay送金が完了します。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom CTA */}
+      <div className="px-5 py-10 bg-gradient-to-t from-green-light to-white mt-auto text-center border-t border-green/10">
+        <h2 className="text-lg font-bold mb-5">幹事のストレスから、<br />今すぐ解放されましょう。</h2>
+        <LineLoginButton />
+        <p className="text-xs text-sub mt-3 mb-8 font-medium">
+          完全無料 / LINEで10秒登録
         </p>
+
+        {/* Footer Links */}
+        <div className="flex justify-center gap-4 text-xs text-sub/70">
+          <a href="/terms.html" className="hover:underline">利用規約</a>
+          <span>|</span>
+          <a href="/privacy.html" className="hover:underline">プライバシーポリシー</a>
+          <span>|</span>
+          <a href="/contact.html" className="hover:underline">お問い合わせ</a>
+        </div>
+        <div className="mt-4 text-[10px] text-sub/50">
+          &copy; 2026 AI KANJI All rights reserved.
+        </div>
       </div>
     </div>
   )
