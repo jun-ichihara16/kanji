@@ -64,6 +64,18 @@ export default function Dashboard() {
             ) : (
               <>
                 <div className="text-lg font-bold mb-1">おかえりなさい、{displayName}さん</div>
+
+                {/* お知らせエリア */}
+                <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-start gap-3">
+                  <div className="mt-0.5 text-blue-500">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-bold text-blue-900 mb-1">【新機能】過去の参加者を簡単に追加できるようになりました</div>
+                    <div className="text-[10px] text-blue-800 leading-relaxed">イベント管理画面の「参加者を追加」から、過去のイベントに参加したメンバーをワンタップで呼び出せます。</div>
+                  </div>
+                </div>
+
                 <div className="text-sm text-sub mb-4">あなたのイベント</div>
 
                 {/* Active/Archived タブ */}
@@ -83,9 +95,28 @@ export default function Dashboard() {
                 </div>
 
                 {filteredEvents.length === 0 ? (
-                  <div className="text-center py-12 text-sub text-sm">
-                    {eventFilter === 'active' ? 'まだイベントがありません' : '完了済みのイベントはありません'}
-                  </div>
+                  eventFilter === 'archived' ? (
+                    <div className="text-center py-12 text-sub text-sm">完了済みのイベントはありません</div>
+                  ) : (
+                    <div className="text-center py-10 px-4 bg-white border border-border rounded-2xl">
+                      <div className="w-16 h-16 bg-green-light rounded-full flex items-center justify-center mx-auto mb-4">
+                        <img src="/app/img/icons/icon_warikan.png" alt="" className="w-8 h-8 opacity-80" />
+                      </div>
+                      <h3 className="font-bold text-lg mb-2">最初のイベントを作りましょう</h3>
+                      <p className="text-xs text-sub leading-relaxed mb-6">
+                        飲み会、旅行、ゴルフコンペなど。<br />
+                        イベントを作ってLINEでシェアするだけで、<br />
+                        面倒なお金の計算・集金をAIが自動化します。
+                      </p>
+                      <Link
+                        to="/events/new"
+                        className="inline-flex items-center justify-center gap-1.5 px-8 py-3.5 bg-green text-white font-bold rounded-xl hover:bg-green-dark transition shadow-sm"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        新しいイベントを作成
+                      </Link>
+                    </div>
+                  )
                 ) : (
                   <div className="space-y-3 mb-5">
                     {filteredEvents.map((ev) => {
@@ -97,8 +128,14 @@ export default function Dashboard() {
                         <div key={ev.id} className={`bg-white border rounded-2xl p-4 transition ${isArchived ? 'border-border opacity-60' : 'border-border hover:border-green hover:shadow-sm'}`}>
                           <Link to={`/events/${ev.id}`} className="block">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="font-bold flex-1">{ev.title}</span>
-                              {isArchived && <span className="text-[10px] bg-gray-bg text-sub px-2 py-0.5 rounded-full">完了</span>}
+                              <span className="font-bold flex-1 truncate">{ev.title}</span>
+                              {isArchived ? (
+                                <span className="shrink-0 text-[10px] bg-gray-bg text-sub px-2 py-0.5 rounded-full">完了</span>
+                              ) : s.total > 0 && s.paid < s.total ? (
+                                <span className="shrink-0 text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full font-bold">未収金あり</span>
+                              ) : s.total > 0 ? (
+                                <span className="shrink-0 text-[10px] bg-green-light text-green-dark border border-green/20 px-2 py-0.5 rounded-full font-bold">集金完了</span>
+                              ) : null}
                             </div>
                             <div className="flex items-center gap-1.5 text-xs text-sub mb-1">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>

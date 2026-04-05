@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useEvent, Event, Participant, AdvanceRecord, SettlementRecord } from '../hooks/useEvent'
 import { calculateSettlements, Settlement, Advance } from '../lib/settle'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import SummaryCard from '../components/SummaryCard'
 import AdvancePaymentForm from '../components/AdvancePaymentForm'
 import { QRCodeCanvas } from 'qrcode.react'
@@ -15,7 +16,9 @@ export default function EventManage() {
     fetchEventById, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, togglePaid,
     fetchAdvances, addAdvance, deleteAdvance, deleteEvent, updateEvent,
     fetchSettlements, upsertSettlement, updateReminderSettings, sendGroupReminder,
+    fetchMyEvents,
   } = useEvent()
+  const { user } = useAuth()
 
   const [event, setEvent] = useState<Event | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
@@ -45,6 +48,8 @@ export default function EventManage() {
   const [editingAdvId, setEditingAdvId] = useState<string | null>(null)
   const [editAdvAmount, setEditAdvAmount] = useState('')
   const [editAdvDesc, setEditAdvDesc] = useState('')
+  const [pastParticipants, setPastParticipants] = useState<{ name: string; payment_method: string; paypay_phone: string | null }[]>([])
+  const [showPastList, setShowPastList] = useState(false)
 
   const load = async () => {
     if (!id) return
@@ -67,6 +72,29 @@ export default function EventManage() {
   }
 
   useEffect(() => { load() }, [id])
+
+  // 過去の参加者リスト取得
+  useEffect(() => {
+    if (!user?.id) return
+    fetchMyEvents(user.id).then(async ({ data: evts }) => {
+      if (!evts) return
+      const otherEventIds = evts.filter((e) => e.id !== id).map((e) => e.id)
+      if (otherEventIds.length === 0) return
+      const { data: allParts } = await supabase
+        .from('participants')
+        .select('name, payment_method, paypay_phone')
+        .in('event_id', otherEventIds)
+      if (!allParts) return
+      // 重複排除（名前ベース）
+      const seen = new Set<string>()
+      const unique = allParts.filter((p: any) => {
+        if (seen.has(p.name)) return false
+        seen.add(p.name)
+        return true
+      })
+      setPastParticipants(unique)
+    })
+  }, [user, id])
 
   // 自動精算計算
   const computedSettlements = useMemo(() => {
@@ -330,6 +358,55 @@ export default function EventManage() {
                 {addingParticipant ? '追加中...' : '追加する'}
               </button>
             </div>
+
+            {/* 過去の参加者から追加 */}
+            {pastParticipants.length > 0 && (
+              <div className="mb-4">
+                <button
+                  onClick={() => setShowPastList(!showPastList)}
+                  className="w-full py-2.5 border border-border rounded-xl text-xs font-semibold text-sub hover:border-green hover:text-green transition flex items-center justify-center gap-1"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                  過去の参加者から追加（{pastParticipants.length}人）
+                  <span className="text-[10px]">{showPastList ? '▲' : '▼'}</span>
+                </button>
+                {showPastList && (
+                  <div className="mt-2 bg-white border border-border rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                    {pastParticipants
+                      .filter((pp) => !participants.some((p) => p.name === pp.name))
+                      .map((pp) => (
+                        <button
+                          key={pp.name}
+                          onClick={async () => {
+                            if (!id) return
+                            const { data: newP } = await addParticipant(id, {
+                              name: pp.name,
+                              payment_method: pp.payment_method,
+                              paypay_phone: pp.paypay_phone || undefined,
+                            })
+                            if (newP) setParticipants((prev) => [...prev, newP])
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2.5 text-left border-b border-border last:border-none hover:bg-green-light/50 transition"
+                        >
+                          <div className="w-7 h-7 rounded-full bg-green/10 text-green flex items-center justify-center text-xs font-bold shrink-0">
+                            {pp.name.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{pp.name}</div>
+                            <div className="text-[10px] text-sub">
+                              {pp.payment_method === 'paypay' && pp.paypay_phone ? `PayPay: ${pp.paypay_phone}` : pp.payment_method === 'bank' ? '振込' : '現金'}
+                            </div>
+                          </div>
+                          <span className="text-xs text-green font-semibold shrink-0">+ 追加</span>
+                        </button>
+                      ))}
+                    {pastParticipants.filter((pp) => !participants.some((p) => p.name === pp.name)).length === 0 && (
+                      <p className="text-center text-xs text-sub py-3">全員追加済みです</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 参加者リスト（編集・削除） */}
             <div className="space-y-2 mb-4">
