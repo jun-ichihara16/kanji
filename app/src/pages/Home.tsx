@@ -43,12 +43,12 @@ export default function Home() {
       {/* Features */}
       <div className="grid grid-cols-3 gap-2 px-4 pb-6">
         {[
-          { icon: '💰', label: '割り勘' },
-          { icon: '📱', label: 'PayPay集金' },
-          { icon: '🔔', label: 'リマインド' },
+          { icon: '/app/img/icons/icon_warikan.png', label: '割り勘' },
+          { icon: '/app/img/icons/icon_paypay.png', label: 'PayPay集金' },
+          { icon: '/app/img/icons/icon_reminder.png', label: 'リマインド' },
         ].map((f) => (
           <div key={f.label} className="text-center py-4 px-2 bg-gray-bg rounded-xl">
-            <div className="text-2xl mb-1">{f.icon}</div>
+            <img src={f.icon} alt={f.label} className="w-12 h-12 mx-auto mb-2" />
             <span className="text-xs font-semibold">{f.label}</span>
           </div>
         ))}
@@ -57,11 +57,11 @@ export default function Home() {
       {/* 立替・精算 */}
       <div className="grid grid-cols-2 gap-2 px-4 pb-6">
         <div className="text-center py-4 px-2 bg-green-light rounded-xl border border-green/20">
-          <div className="text-2xl mb-1">🧾</div>
+          <img src="/app/img/icons/icon_tatekae.png" alt="立替登録" className="w-12 h-12 mx-auto mb-2" />
           <span className="text-xs font-semibold text-green-dark">立替登録</span>
         </div>
         <div className="text-center py-4 px-2 bg-green-light rounded-xl border border-green/20">
-          <div className="text-2xl mb-1">🔄</div>
+          <img src="/app/img/icons/icon_seisan.png" alt="自動精算" className="w-12 h-12 mx-auto mb-2" />
           <span className="text-xs font-semibold text-green-dark">自動精算</span>
         </div>
       </div>
