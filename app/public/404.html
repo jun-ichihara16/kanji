@@ -4,13 +4,12 @@
 <meta charset="utf-8">
 <title>AI KANJI</title>
 <script>
-  // GitHub Pages SPA redirect for dynamic routes (/e/:slug, /events/:id, etc.)
   var path = window.location.pathname;
   var search = window.location.search;
   var hash = window.location.hash;
-  if (path.startsWith('/kanji/app/')) {
+  if (path.startsWith('/app/')) {
     sessionStorage.setItem('spa_redirect', path + search + hash);
-    window.location.replace('/kanji/app/');
+    window.location.replace('/app/');
   }
 </script>
 </head>

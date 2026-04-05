@@ -7,7 +7,7 @@ const LINE_CHANNEL_ID = import.meta.env.VITE_LINE_CHANNEL_ID
  */
 export function loginWithLINE() {
   const redirectUri = encodeURIComponent(
-    window.location.origin + '/kanji/app/auth/callback'
+    window.location.origin + '/app/auth/callback'
   )
   const state = Math.random().toString(36).substring(2, 15)
   const nonce = Math.random().toString(36).substring(2, 15)
@@ -44,7 +44,7 @@ export async function exchangeLineCode(code: string): Promise<{
   user: { id: string; displayName: string; avatarUrl?: string } | null
   error: string | null
 }> {
-  const redirectUri = window.location.origin + '/kanji/app/auth/callback'
+  const redirectUri = window.location.origin + '/app/auth/callback'
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
@@ -100,5 +100,5 @@ export function clearLocalUser() {
 
 export function signOut() {
   clearLocalUser()
-  window.location.href = '/kanji/app/'
+  window.location.href = '/app/'
 }

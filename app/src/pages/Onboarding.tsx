@@ -59,7 +59,7 @@ export default function Onboarding() {
       {/* Header */}
       <div className="px-4 pt-4 pb-2">
         <div className="flex items-center gap-1.5 text-lg font-extrabold text-green mb-3">
-          <img src="/kanji/app/img/kanji_logo.png" alt="" width={24} height={24} />
+          <img src="/app/img/kanji_logo.png" alt="" width={24} height={24} />
           AI KANJI
         </div>
         {/* Progress bar */}
@@ -80,7 +80,7 @@ export default function Onboarding() {
           <div className="pt-8">
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-green-light rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <img src="/kanji/app/img/kanji_logo.png" alt="" width={40} height={40} />
+                <img src="/app/img/kanji_logo.png" alt="" width={40} height={40} />
               </div>
               <h1 className="text-2xl font-extrabold mb-3">AI KANJIへようこそ！</h1>
               <p className="text-sm text-sub leading-relaxed">
@@ -129,7 +129,7 @@ export default function Onboarding() {
                 <div>
                   <span className="text-sm font-semibold">利用規約に同意する</span>
                   <a
-                    href="https://jun-ichihara16.github.io/kanji/terms.html"
+                    href="https://kanji-relief.com/terms.html"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block text-xs text-green mt-1 hover:underline"
@@ -150,7 +150,7 @@ export default function Onboarding() {
                 <div>
                   <span className="text-sm font-semibold">プライバシーポリシーに同意する</span>
                   <a
-                    href="https://jun-ichihara16.github.io/kanji/privacy.html"
+                    href="https://kanji-relief.com/privacy.html"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block text-xs text-green mt-1 hover:underline"
@@ -198,7 +198,7 @@ export default function Onboarding() {
             </p>
             <button
               onClick={() => {
-                window.location.href = '/kanji/app/dashboard'
+                window.location.href = '/app/dashboard'
               }}
               className="w-full py-4 bg-green text-white font-bold rounded-xl hover:bg-green-dark transition"
             >

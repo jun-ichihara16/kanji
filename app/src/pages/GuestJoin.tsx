@@ -314,7 +314,7 @@ export default function GuestJoin() {
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm">{p.name}</div>
                           <div className="text-xs text-sub flex items-center gap-1">
-                            {p.payment_method === 'paypay' && <><img src="/kanji/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" /> {p.paypay_phone || 'PayPay'}</>}
+                            {p.payment_method === 'paypay' && <><img src="/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" /> {p.paypay_phone || 'PayPay'}</>}
                             {p.payment_method === 'cash' && '💴 現金'}
                             {p.payment_method === 'bank' && '🏦 振込'}
                           </div>
@@ -592,7 +592,7 @@ export default function GuestJoin() {
                           {isPayPay && !isSettled && (
                             <div className="mt-3 bg-gray-bg rounded-xl p-3">
                               <div className="flex items-center gap-1.5 text-xs text-sub mb-2">
-                                <img src="/kanji/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
+                                <img src="/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
                                 PayPay番号: <span className="font-inter font-semibold text-[#1A1A1A]">{payee.paypay_phone}</span>
                               </div>
                               <div className="flex items-center gap-1.5">

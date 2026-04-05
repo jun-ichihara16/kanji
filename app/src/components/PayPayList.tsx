@@ -18,7 +18,7 @@ export default function PayPayList({ participants }: { participants: Participant
         onClick={() => setOpen(!open)}
         className="w-full py-3.5 border-2 border-green rounded-xl bg-green-light text-green-dark text-sm font-bold flex items-center justify-center gap-2"
       >
-        <img src="/kanji/app/img/paypay.jpg" alt="PayPay" width={24} height={24} className="rounded" />
+        <img src="/app/img/paypay.jpg" alt="PayPay" width={24} height={24} className="rounded" />
         PayPay番号をまとめて見る
         <span className="text-xs">{open ? '▲' : '▼'}</span>
       </button>

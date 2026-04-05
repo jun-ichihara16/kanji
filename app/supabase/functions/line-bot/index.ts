@@ -101,7 +101,7 @@ function calculateSettlements(
 }
 
 // ===== APP URL =====
-const APP_URL = 'https://jun-ichihara16.github.io/kanji/app'
+const APP_URL = 'https://kanji-relief.com/app'
 
 // ===== メイン =====
 serve(async (req) => {

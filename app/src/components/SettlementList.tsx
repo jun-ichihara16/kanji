@@ -89,7 +89,7 @@ export default function SettlementList({
               <div className="mt-1 text-xs text-sub">
                 {method === 'paypay' && getPayPay(s.to) && (
                   <span className="flex items-center gap-1">
-                    <img src="/kanji/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" />
+                    <img src="/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" />
                     PayPay: {getPayPay(s.to)}
                   </span>
                 )}

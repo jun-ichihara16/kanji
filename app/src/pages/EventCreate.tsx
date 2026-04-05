@@ -19,7 +19,7 @@ export default function EventCreate() {
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  const shareUrl = `${window.location.origin}/kanji/app/e/${createdSlug}`
+  const shareUrl = `${window.location.origin}/app/e/${createdSlug}`
 
   const handleCreate = async () => {
     if (!user || !title) return

@@ -14,7 +14,7 @@ export default function AdminLayout() {
       {/* Top bar */}
       <div className="bg-[#1A1A1A] text-white px-4 py-2 flex items-center justify-between">
         <span className="text-sm font-bold">AI KANJI Admin</span>
-        <a href="/kanji/app/dashboard" className="text-xs text-gray-400 hover:text-white">← アプリに戻る</a>
+        <a href="/app/dashboard" className="text-xs text-gray-400 hover:text-white">← アプリに戻る</a>
       </div>
       {/* Horizontal nav (mobile-friendly) */}
       <nav className="bg-white border-b border-border overflow-x-auto flex">

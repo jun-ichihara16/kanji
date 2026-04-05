@@ -23,14 +23,14 @@ export default function AuthCallback() {
       if (error) {
         console.error('[AuthCallback] LINE error:', error)
         setStatus('ログインがキャンセルされました')
-        setTimeout(() => { window.location.href = '/kanji/app/' }, 1500)
+        setTimeout(() => { window.location.href = '/app/' }, 1500)
         return
       }
 
       if (savedState && state !== savedState) {
         console.error('[AuthCallback] State mismatch')
         setStatus('認証エラー')
-        setTimeout(() => { window.location.href = '/kanji/app/' }, 1500)
+        setTimeout(() => { window.location.href = '/app/' }, 1500)
         return
       }
 
@@ -38,7 +38,7 @@ export default function AuthCallback() {
 
       if (!code) {
         setStatus('認証コードが見つかりません')
-        setTimeout(() => { window.location.href = '/kanji/app/' }, 1500)
+        setTimeout(() => { window.location.href = '/app/' }, 1500)
         return
       }
 
@@ -47,7 +47,7 @@ export default function AuthCallback() {
       try {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
         const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-        const redirectUri = window.location.origin + '/kanji/app/auth/callback'
+        const redirectUri = window.location.origin + '/app/auth/callback'
 
         console.log('[AuthCallback] Calling Edge Function...')
 
@@ -69,9 +69,9 @@ export default function AuthCallback() {
           console.log('[AuthCallback] User saved, redirecting...')
           // 初回ログイン（onboardingCompleted未設定）→ オンボーディングへ
           if (!data.user.onboardingCompleted) {
-            window.location.href = '/kanji/app/onboarding'
+            window.location.href = '/app/onboarding'
           } else {
-            window.location.href = '/kanji/app/dashboard'
+            window.location.href = '/app/dashboard'
           }
           return
         }
@@ -79,11 +79,11 @@ export default function AuthCallback() {
         // Edge Function failed - show error detail
         console.error('[AuthCallback] Edge Function error:', data)
         setStatus(`エラー: ${data.error || res.status}`)
-        setTimeout(() => { window.location.href = '/kanji/app/' }, 3000)
+        setTimeout(() => { window.location.href = '/app/' }, 3000)
       } catch (e: any) {
         console.error('[AuthCallback] Network error:', e)
         setStatus('通信エラーが発生しました')
-        setTimeout(() => { window.location.href = '/kanji/app/' }, 3000)
+        setTimeout(() => { window.location.href = '/app/' }, 3000)
       }
     }
 

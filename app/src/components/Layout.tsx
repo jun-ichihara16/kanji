@@ -11,7 +11,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Header */}
         <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-white sticky top-0 z-50">
           <Link to="/" className="flex items-center gap-1.5 text-xl font-extrabold text-green">
-            <img src="/kanji/app/img/kanji_logo.png" alt="" width={26} height={26} />
+            <img src="/app/img/kanji_logo.png" alt="" width={26} height={26} />
             AI KANJI
           </Link>
           {isLoggedIn ? (

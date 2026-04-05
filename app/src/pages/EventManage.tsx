@@ -168,7 +168,7 @@ export default function EventManage() {
   const handleArchive = async () => {
     if (!id || !confirm('このイベントをアーカイブ（完了）にしますか？')) return
     await updateEvent(id, { status: 'archived' })
-    window.location.href = '/kanji/app/dashboard'
+    window.location.href = '/app/dashboard'
   }
 
   const handleToggleSettled = async (fromName: string, toName: string, amount: number) => {
@@ -192,7 +192,7 @@ export default function EventManage() {
   }
 
   const paidCount = participants.filter((p) => p.is_paid).length
-  const shareUrl = `${window.location.origin}/kanji/app/e/${event.slug}`
+  const shareUrl = `${window.location.origin}/app/e/${event.slug}`
 
   return (
     <div className="flex-1 flex flex-col">
@@ -222,7 +222,7 @@ export default function EventManage() {
             onClick={async () => {
               if (!confirm(`「${event.title}」を削除しますか？`)) return
               await deleteEvent(event.id)
-              window.location.href = '/kanji/app/dashboard'
+              window.location.href = '/app/dashboard'
             }}
             className="text-xs text-sub hover:text-red-500 transition"
           >
@@ -371,7 +371,7 @@ export default function EventManage() {
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold">{p.name}</div>
                         <div className="text-xs text-sub flex items-center gap-1 mt-0.5">
-                          {p.payment_method === 'paypay' && <><img src="/kanji/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" /> <span className="font-inter">{p.paypay_phone || 'PayPay'}</span></>}
+                          {p.payment_method === 'paypay' && <><img src="/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" /> <span className="font-inter">{p.paypay_phone || 'PayPay'}</span></>}
                           {p.payment_method === 'cash' && '💴 現金'}
                           {p.payment_method === 'bank' && '🏦 振込'}
                         </div>
