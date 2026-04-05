@@ -30,17 +30,28 @@ export default function Home() {
           AI KANJI
         </div>
         <h1 className="text-2xl font-extrabold leading-snug mb-3">
-          もう、お金の催促で<br />
-          <span className="text-green">嫌な思いはさせません。</span>
+          お金のやり取りを、<br />
+          <span className="text-green">もっと手軽に、気持ちよく。</span>
         </h1>
         <p className="text-sm text-sub leading-relaxed mb-7">
           割り勘計算からPayPay集金、未払い者への<br />
           リマインドまで。AIがすべて自動で行います。
         </p>
         <LineLoginButton />
-        <p className="text-xs text-sub mt-3 font-medium">
-          完全無料 / LINEで10秒登録 / 友だちにアプリ不要
-        </p>
+        <div className="flex justify-center gap-3 mt-4">
+          <div className="flex items-center gap-1 text-xs text-sub">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+            完全無料
+          </div>
+          <div className="flex items-center gap-1 text-xs text-sub">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+            10秒で登録
+          </div>
+          <div className="flex items-center gap-1 text-xs text-sub">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+            アプリ不要
+          </div>
+        </div>
       </div>
 
       {/* Features */}
