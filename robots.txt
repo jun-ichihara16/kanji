@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /app/admin/
+
+Sitemap: https://kanji-relief.com/sitemap.xml
