@@ -195,7 +195,15 @@ export default function GuestJoin() {
   }
 
   if (!event) {
-    return <div className="flex-1 flex items-center justify-center text-sub text-sm">イベントが見つかりません</div>
+    return (
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="text-4xl mb-3">🔒</div>
+          <h2 className="font-bold text-lg mb-2">イベントが見つかりません</h2>
+          <p className="text-sm text-sub">このリンクは無効か、イベントが削除された可能性があります。<br />幹事から正しいリンクを受け取ってください。</p>
+        </div>
+      </div>
+    )
   }
 
   const SECTIONS = [

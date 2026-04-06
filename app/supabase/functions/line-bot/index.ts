@@ -48,7 +48,7 @@ async function getGroupMemberProfile(groupId: string, userId: string): Promise<s
 }
 
 // ===== Slug生成 =====
-function generateSlug(len = 8): string {
+function generateSlug(len = 12): string {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
   let slug = ''
   const arr = new Uint8Array(len)

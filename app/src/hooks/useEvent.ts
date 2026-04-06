@@ -96,7 +96,7 @@ export function useEvent() {
     fee_per_person?: number
     memo?: string
   }) {
-    const slug = nanoid(6)
+    const slug = nanoid(12)
     const { data, error } = await supabase
       .from('events')
       .insert({
