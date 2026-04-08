@@ -73,6 +73,46 @@ export default function EventManage() {
 
   useEffect(() => { load() }, [id])
 
+  // === Supabase Realtime: settlements + participants テーブルの変更を購読 ===
+  // 参加者が精算完了/支払い済みにした際、幹事側にリアルタイム反映する
+  useEffect(() => {
+    if (!id) return
+    const channel = supabase
+      .channel(`event-sync-${id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'settlements',
+        filter: `event_id=eq.${id}`,
+      }, (payload: any) => {
+        const rec = payload.new as SettlementRecord | undefined
+        if (rec) {
+          setSettledMap((prev) => ({ ...prev, [`${rec.from_name}-${rec.to_name}`]: rec.is_settled }))
+          setSettlementRecords((prev) => {
+            const idx = prev.findIndex((s) => s.from_name === rec.from_name && s.to_name === rec.to_name)
+            if (idx >= 0) return prev.map((s, i) => i === idx ? rec : s)
+            return [...prev, rec]
+          })
+        }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'participants',
+        filter: `event_id=eq.${id}`,
+      }, (payload: any) => {
+        const updated = payload.new as Participant | undefined
+        if (updated) {
+          setParticipants((prev) =>
+            prev.map((p) => p.id === updated.id ? { ...p, ...updated } : p)
+          )
+        }
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [id])
+
   // 過去の参加者リスト取得
   useEffect(() => {
     if (!user?.id) return
@@ -219,7 +259,15 @@ export default function EventManage() {
     return <div className="flex-1 flex items-center justify-center text-sub text-sm">イベントが見つかりません</div>
   }
 
-  const paidCount = participants.filter((p) => p.is_paid).length
+  // paidCount を settlements データから直接導出（is_paid に依存しない）
+  // 精算で支払い義務がある人（from側）のうち、全送金が完了した人数
+  const debtorNames = [...new Set(computedSettlements.map((s) => s.from))]
+  const paidCount = debtorNames.filter((name) =>
+    computedSettlements
+      .filter((s) => s.from === name)
+      .every((s) => !!settledMap[`${s.from}-${s.to}`])
+  ).length
+  const unpaidCount = debtorNames.length - paidCount
   const shareUrl = `${window.location.origin}/app/e/${event.slug}`
 
   return (
@@ -293,8 +341,8 @@ export default function EventManage() {
       {/* Summary */}
       <div className="grid grid-cols-3 gap-2 px-4 mb-3">
         <SummaryCard value={participants.length} label="参加者" />
-        <SummaryCard value={paidCount} label="支払い済み" color="#22C55E" />
-        <SummaryCard value={participants.length - paidCount} label="未払い" color="#F97316" />
+        <SummaryCard value={paidCount} label="精算済み" color="#22C55E" />
+        <SummaryCard value={unpaidCount} label="未精算" color={unpaidCount > 0 ? '#F97316' : undefined} />
       </div>
 
       {/* Tabs */}
@@ -448,7 +496,29 @@ export default function EventManage() {
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold">{p.name}</div>
                         <div className="text-xs text-sub flex items-center gap-1 mt-0.5">
-                          {p.payment_method === 'paypay' && <><img src="/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" /> <span className="font-inter">{p.paypay_phone || 'PayPay'}</span></>}
+                          {p.payment_method === 'paypay' && (
+                            <>
+                              <img src="/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" />
+                              {p.paypay_phone ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    navigator.clipboard.writeText(p.paypay_phone!)
+                                    const el = e.currentTarget
+                                    const orig = el.textContent
+                                    el.textContent = 'コピー済み ✓'
+                                    setTimeout(() => { el.textContent = orig }, 1500)
+                                  }}
+                                  className="font-inter hover:text-green transition cursor-pointer underline decoration-dotted underline-offset-2"
+                                  title="タップでコピー"
+                                >
+                                  {p.paypay_phone}
+                                </button>
+                              ) : (
+                                <span>PayPay</span>
+                              )}
+                            </>
+                          )}
                           {p.payment_method === 'cash' && '💴 現金'}
                           {p.payment_method === 'bank' && '🏦 振込'}
                         </div>
@@ -514,10 +584,40 @@ export default function EventManage() {
                               <div className={`font-inter text-center text-xl font-extrabold mb-1 ${isSettled ? 'text-sub line-through' : 'text-green'}`}>
                                 ¥{s.amount.toLocaleString()}
                               </div>
-                              {/* 支払い方法 */}
+                              {/* 支払い方法 + PayPay送金UI */}
                               <div className="text-center text-xs text-sub">
                                 {p?.payment_method === 'paypay' && p.paypay_phone ? `PayPay: ${p.paypay_phone}` : p?.payment_method === 'bank' ? '🏦 振込' : '💴 現金'}
                               </div>
+
+                              {/* 幹事向けPayPay送金アクション（PayPayユーザー・未精算のみ） */}
+                              {p?.payment_method === 'paypay' && p.paypay_phone && !isSettled && (
+                                <div className="mt-3 bg-gray-bg rounded-xl p-3">
+                                  <div className="flex items-center gap-1.5 text-xs text-sub mb-2">
+                                    <img src="/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
+                                    PayPay番号: <span className="font-inter font-semibold text-[#1A1A1A]">{p.paypay_phone}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(p.paypay_phone!)
+                                        const el = document.getElementById(`manage-copy-${i}`)
+                                        if (el) { el.textContent = 'コピー済み ✓'; setTimeout(() => { el.textContent = '番号をコピー' }, 2000) }
+                                      }}
+                                      className="flex-1 py-2.5 bg-green text-white text-xs font-bold rounded-lg hover:bg-green-dark transition text-center"
+                                    >
+                                      <span id={`manage-copy-${i}`}>番号をコピー</span>
+                                    </button>
+                                    <span className="text-sub text-xs">▶</span>
+                                    <a
+                                      href="paypay://"
+                                      onClick={() => { navigator.clipboard.writeText(p.paypay_phone!) }}
+                                      className="flex-1 py-2.5 bg-[#FF0033] text-white text-xs font-bold rounded-lg hover:brightness-90 transition text-center no-underline"
+                                    >
+                                      PayPayで送金
+                                    </a>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                             {/* 完了トグル */}
                             <button
