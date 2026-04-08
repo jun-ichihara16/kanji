@@ -108,7 +108,11 @@ export default function EventManage() {
           )
         }
       })
-      .subscribe()
+      .subscribe((status: string) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.warn('Realtime subscription failed (CSP or network). Falling back to manual refresh.')
+        }
+      })
 
     return () => { supabase.removeChannel(channel) }
   }, [id])
