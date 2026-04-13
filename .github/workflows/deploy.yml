@@ -76,3 +76,28 @@ jobs:
           path: _site
       - uses: actions/deploy-pages@v4
         id: deployment
+
+  # Edge Functions の自動デプロイ
+  deploy-functions:
+    runs-on: ubuntu-latest
+    needs: build-and-deploy
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy Edge Functions
+        working-directory: app
+        run: |
+          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          supabase functions deploy admin-api
+          supabase functions deploy line-auth
+          supabase functions deploy line-bot
+          supabase functions deploy notify-contact
+          supabase functions deploy notify-organizer
+          supabase functions deploy send-group-reminder
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

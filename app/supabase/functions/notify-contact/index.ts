@@ -1,15 +1,25 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { corsHeaders, handleCors } from '../_shared/cors.ts'
+import { escapeHtml, isValidEmail, isWithinLength } from '../_shared/validation.ts'
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
     const { name, email, category, message } = await req.json()
+
+    // サーバー側バリデーション
+    if (!name || !email || !message) {
+      return new Response(JSON.stringify({ error: 'name, email, message are required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    if (!isValidEmail(email)) {
+      return new Response(JSON.stringify({ error: 'Invalid email format' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    if (!isWithinLength(name, 200) || !isWithinLength(message, 5000)) {
+      return new Response(JSON.stringify({ error: 'Input too long' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 
     const categoryLabel: Record<string, string> = {
@@ -32,10 +42,10 @@ serve(async (req) => {
         html: `
           <h2>AI KANJI お問い合わせ</h2>
           <table style="border-collapse:collapse;width:100%;max-width:500px">
-            <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">お名前</td><td style="padding:8px;border:1px solid #ddd">${name}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">メール</td><td style="padding:8px;border:1px solid #ddd">${email}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">カテゴリ</td><td style="padding:8px;border:1px solid #ddd">${categoryLabel[category] || category}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">内容</td><td style="padding:8px;border:1px solid #ddd;white-space:pre-wrap">${message}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">お名前</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(name)}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">メール</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(email)}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">カテゴリ</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(categoryLabel[category] || category)}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">内容</td><td style="padding:8px;border:1px solid #ddd;white-space:pre-wrap">${escapeHtml(message)}</td></tr>
           </table>
           <p style="color:#999;font-size:12px;margin-top:16px">このメールはAI KANJIのお問い合わせフォームから自動送信されました。</p>
         `,

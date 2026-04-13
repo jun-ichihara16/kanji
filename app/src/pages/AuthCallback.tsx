@@ -27,9 +27,10 @@ export default function AuthCallback() {
         return
       }
 
-      if (savedState && state !== savedState) {
-        console.error('[AuthCallback] State mismatch')
-        setStatus('認証エラー')
+      // state検証: savedStateが存在しない場合もリジェクト（CSRF防止）
+      if (!savedState || !state || state !== savedState) {
+        console.error('[AuthCallback] State mismatch or missing:', { state, savedState })
+        setStatus('認証エラー（不正なリクエスト）')
         setTimeout(() => { window.location.href = '/app/' }, 1500)
         return
       }

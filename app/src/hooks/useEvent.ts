@@ -215,7 +215,7 @@ export function useEvent() {
     return { error }
   }
 
-  async function sendGroupReminder(eventId: string) {
+  async function sendGroupReminder(eventId: string, userId?: string) {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
     const res = await fetch(`${supabaseUrl}/functions/v1/send-group-reminder`, {
@@ -224,7 +224,7 @@ export function useEvent() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${supabaseAnonKey}`,
       },
-      body: JSON.stringify({ eventId }),
+      body: JSON.stringify({ eventId, userId }),
     })
     const data = await res.json()
     return { ok: res.ok, data }

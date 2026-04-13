@@ -700,7 +700,7 @@ export default function EventManage() {
           <button
             onClick={async () => {
               setSendingReminder(true)
-              const { ok, data } = await sendGroupReminder(event.id)
+              const { ok, data } = await sendGroupReminder(event.id, user?.id)
               setSendingReminder(false)
               if (ok) { setReminderSent(true); setTimeout(() => setReminderSent(false), 3000) }
               else { alert('送信失敗: ' + (data?.error || 'エラー')) }

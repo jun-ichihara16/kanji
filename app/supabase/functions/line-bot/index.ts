@@ -2,10 +2,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { encode as base64Encode } from 'https://deno.land/std@0.177.0/encoding/base64.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-line-signature',
-}
+import { corsHeaders, handleCors } from '../_shared/cors.ts'
 
 // ===== 署名検証 =====
 async function verifySignature(body: string, signature: string, secret: string): Promise<boolean> {
@@ -133,6 +130,20 @@ serve(async (req) => {
       const sourceType = event.source?.type // 'group' | 'room' | 'user'
       const groupId = event.source?.groupId || event.source?.roomId
       const userId = event.source?.userId
+      const webhookEventId = event.webhookEventId
+
+      // === べき等性チェック: 同じwebhookイベントが再送された場合はスキップ ===
+      if (webhookEventId) {
+        const { data: existing } = await supabase
+          .from('webhook_event_log')
+          .select('webhook_event_id')
+          .eq('webhook_event_id', webhookEventId)
+          .maybeSingle()
+        if (existing) {
+          console.log(`Skipping duplicate webhook event: ${webhookEventId}`)
+          continue
+        }
+      }
 
       // ===== joinイベント: Botがグループに追加された =====
       if (event.type === 'join') {
@@ -279,6 +290,10 @@ serve(async (req) => {
           const displayName = userId ? await getGroupMemberProfile(groupId, userId) : 'Unknown'
 
           const amount = parseInt(amountStr)
+          if (isNaN(amount) || amount <= 0 || amount > 10_000_000) {
+            await replyMessage(replyToken, [{ type: 'text', text: '❌ 金額は1〜10,000,000円の範囲で入力してください' }])
+            continue
+          }
           const { error } = await supabase
             .from('advances')
             .insert({
@@ -369,6 +384,15 @@ serve(async (req) => {
           type: 'text',
           text: `⚠️ 不明なコマンドです。\n@KANJI ヘルプ で使い方を確認してください。`,
         }])
+      }
+
+      // === べき等性: 処理完了をログに記録 ===
+      if (webhookEventId) {
+        await supabase
+          .from('webhook_event_log')
+          .insert({ webhook_event_id: webhookEventId, event_type: event.type || 'unknown' })
+          .then(() => {})
+          .catch((e: unknown) => console.warn('webhook_event_log insert failed:', e))
       }
     }
 

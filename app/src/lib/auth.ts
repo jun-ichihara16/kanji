@@ -3,14 +3,24 @@ import { supabase } from './supabase'
 const LINE_CHANNEL_ID = import.meta.env.VITE_LINE_CHANNEL_ID
 
 /**
+ * 暗号学的に安全なランダムトークンを生成（CSRF対策用）
+ * Math.random() は予測可能なため使用しない
+ */
+function generateSecureToken(bytes = 32): string {
+  const array = new Uint8Array(bytes)
+  crypto.getRandomValues(array)
+  return Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/**
  * LINE OAuth 直接認証
  */
 export function loginWithLINE() {
   const redirectUri = encodeURIComponent(
     window.location.origin + '/app/auth/callback'
   )
-  const state = Math.random().toString(36).substring(2, 15)
-  const nonce = Math.random().toString(36).substring(2, 15)
+  const state = generateSecureToken()
+  const nonce = generateSecureToken()
 
   sessionStorage.setItem('line_oauth_state', state)
 

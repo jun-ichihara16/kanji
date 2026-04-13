@@ -1,10 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { corsHeaders, handleCors } from '../_shared/cors.ts'
 
 // 精算計算（settle.tsと同じロジック）
 function calculateSettlements(
@@ -51,7 +48,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { eventId } = await req.json()
+    const { eventId, userId } = await req.json()
     if (!eventId) {
       return new Response(JSON.stringify({ error: 'eventId required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
@@ -65,6 +62,11 @@ serve(async (req) => {
     const { data: ev, error: evErr } = await supabase.from('events').select('*').eq('id', eventId).single()
     if (evErr || !ev) {
       return new Response(JSON.stringify({ error: 'Event not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // 認可: 幹事（host_id）のみリマインド送信可能
+    if (userId && ev.host_id && userId !== ev.host_id) {
+      return new Response(JSON.stringify({ error: 'Forbidden: only the event host can send reminders' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
     if (!ev.line_group_id) {
       return new Response(JSON.stringify({ error: 'No LINE group linked' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
