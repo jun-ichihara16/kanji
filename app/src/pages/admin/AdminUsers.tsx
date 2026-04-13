@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../../hooks/useAuth'
 import { useEvent } from '../../hooks/useEvent'
 
 export default function AdminUsers() {
+  const { user } = useAuth()
   const { fetchAllUsers, fetchAllEvents, banUser, updateUserAdminInfo } = useEvent()
   const [users, setUsers] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
@@ -31,7 +33,7 @@ export default function AdminUsers() {
   const handleBan = async (u: any) => {
     const newVal = !u.is_banned
     if (!confirm(`${u.display_name}を${newVal ? '凍結' : '凍結解除'}しますか？`)) return
-    await banUser(u.id, newVal)
+    await banUser(user!.id, u.id, newVal)
     setUsers((prev) => prev.map((x) => x.id === u.id ? { ...x, is_banned: newVal } : x))
   }
 
@@ -58,13 +60,13 @@ export default function AdminUsers() {
 
   const handleSaveMemo = async (u: any) => {
     setSaving(true)
-    await updateUserAdminInfo(u.id, u.admin_tags || [], editMemo)
+    await updateUserAdminInfo(user!.id, u.id, u.admin_tags || [], editMemo)
     setUsers((prev) => prev.map((x) => x.id === u.id ? { ...x, admin_memo: editMemo } : x))
     setSaving(false)
   }
 
   const saveTags = async (id: string, tags: string[], memo: string) => {
-    await updateUserAdminInfo(id, tags, memo)
+    await updateUserAdminInfo(user!.id, id, tags, memo)
   }
 
   if (loading) return <div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-green/30 border-t-green rounded-full animate-spin" /></div>

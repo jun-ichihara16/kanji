@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../../hooks/useAuth'
 import { useEvent } from '../../hooks/useEvent'
 
 const STATUS_OPTIONS = [
@@ -8,6 +9,7 @@ const STATUS_OPTIONS = [
 ]
 
 export default function AdminInquiries() {
+  const { user } = useAuth()
   const { fetchAllContacts, updateContactStatus, replyContact } = useEvent()
   const [contacts, setContacts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -16,21 +18,22 @@ export default function AdminInquiries() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetchAllContacts().then(({ data }) => {
+    if (!user?.id) return
+    fetchAllContacts(user.id).then(({ data }) => {
       setContacts(data || [])
       setLoading(false)
     })
-  }, [])
+  }, [user])
 
   const handleStatus = async (id: string, status: string) => {
-    await updateContactStatus(id, status)
+    await updateContactStatus(user!.id, id, status)
     setContacts((prev) => prev.map((c) => c.id === id ? { ...c, status } : c))
   }
 
   const handleReply = async (id: string) => {
     if (!replyText.trim()) return
     setSaving(true)
-    const { data } = await replyContact(id, replyText.trim())
+    const { data } = await replyContact(user!.id, id, replyText.trim())
     if (data) {
       setContacts((prev) => prev.map((c) => c.id === id ? data : c))
     }

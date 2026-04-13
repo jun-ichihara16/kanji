@@ -33,9 +33,9 @@ jobs:
           npm ci
           npm run build
         env:
-          VITE_SUPABASE_URL: https://kdaeebtjwnxerebxmjcs.supabase.co
-          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkYWVlYnRqd254ZXJlYnhtamNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMzQ1MTEsImV4cCI6MjA5MDcxMDUxMX0.tPeQvMoQ4we1Gj8VxXmnb28FnSoTut33923xCYW0ELw
-          VITE_LINE_CHANNEL_ID: "2009684655"
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_LINE_CHANNEL_ID: ${{ secrets.VITE_LINE_CHANNEL_ID }}
 
       # Combine: LP (root) + React app (app/)
       - name: Prepare deploy directory

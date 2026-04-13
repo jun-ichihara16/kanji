@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../../hooks/useAuth'
 import { useEvent } from '../../hooks/useEvent'
 
 function getSizeBadge(partCount: number, totalAmount: number) {
@@ -9,6 +10,7 @@ function getSizeBadge(partCount: number, totalAmount: number) {
 }
 
 export default function AdminEvents() {
+  const { user } = useAuth()
   const { fetchAllEvents, fetchAllUsers, fetchAllParticipants, fetchAllAdvances, forceDeleteEvent } = useEvent()
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,7 +32,7 @@ export default function AdminEvents() {
 
   const handleDelete = async (e: any) => {
     if (!confirm(`「${e.title}」を強制削除しますか？\n関連する参加者・立替データもすべて削除されます。`)) return
-    await forceDeleteEvent(e.id)
+    await forceDeleteEvent(user!.id, e.id)
     setEvents((prev) => prev.filter((x) => x.id !== e.id))
   }
 

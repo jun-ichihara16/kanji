@@ -48,6 +48,21 @@ export interface AdvanceRecord {
   created_at: string
 }
 
+// Admin操作用: Edge Function経由でservice keyを使う
+async function callAdminApi(body: Record<string, unknown>) {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+  const res = await fetch(`${supabaseUrl}/functions/v1/admin-api`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${supabaseAnonKey}`,
+    },
+    body: JSON.stringify(body),
+  })
+  return res.json()
+}
+
 export function useEvent() {
   async function fetchMyEvents(userId: string) {
     const { data, error } = await supabase
@@ -259,17 +274,21 @@ export function useEvent() {
     upsertSettlement,
     updateReminderSettings,
     sendGroupReminder,
-    // Admin APIs
+    // Admin APIs — RLS制限される操作はEdge Function(service key)経由
     fetchAllUsers: async () => supabase.from('users').select('*').order('created_at', { ascending: false }),
     fetchAllEvents: async () => supabase.from('events').select('*').order('created_at', { ascending: false }),
     fetchAllAdvances: async () => supabase.from('advances').select('*'),
     fetchAllParticipants: async () => supabase.from('participants').select('*'),
-    fetchAllContacts: async () => supabase.from('contacts').select('*').order('created_at', { ascending: false }),
-    banUser: async (id: string, banned: boolean) => supabase.from('users').update({ is_banned: banned }).eq('id', id),
-    updateUserAdminInfo: async (id: string, tags: string[], memo: string) => supabase.from('users').update({ admin_tags: tags, admin_memo: memo }).eq('id', id),
-    updateContactStatus: async (id: string, status: string) => supabase.from('contacts').update({ status }).eq('id', id),
-    replyContact: async (id: string, replyText: string) => supabase.from('contacts').update({ admin_reply: replyText, replied_at: new Date().toISOString(), status: 'done' }).eq('id', id).select().single(),
-    forceDeleteEvent: async (id: string) => supabase.from('events').delete().eq('id', id),
+    // contacts: RLS強化後はanon keyでSELECT不可 → Edge Function経由
+    fetchAllContacts: async (userId: string) => {
+      const res = await callAdminApi({ action: 'fetchContacts', userId })
+      return { data: res?.data || null, error: res?.error ? { message: res.error } : null }
+    },
+    banUser: async (userId: string, targetId: string, banned: boolean) => callAdminApi({ action: 'banUser', userId, targetId, banned }),
+    updateUserAdminInfo: async (userId: string, targetId: string, tags: string[], memo: string) => callAdminApi({ action: 'updateUserAdminInfo', userId, targetId, tags, memo }),
+    updateContactStatus: async (userId: string, contactId: string, status: string) => callAdminApi({ action: 'updateContactStatus', userId, contactId, status }),
+    replyContact: async (userId: string, contactId: string, replyText: string) => callAdminApi({ action: 'replyContact', userId, contactId, replyText }),
+    forceDeleteEvent: async (userId: string, eventId: string) => callAdminApi({ action: 'forceDeleteEvent', userId, eventId }),
     // Admin APIs (Venues)
     fetchAllVenues: async () => supabase.from('venues').select('*').order('created_at', { ascending: false }),
     createVenue: async (data: any) => supabase.from('venues').insert(data).select().single(),
