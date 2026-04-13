@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth'
 import SummaryCard from '../components/SummaryCard'
 import AdvancePaymentForm from '../components/AdvancePaymentForm'
 import { QRCodeCanvas } from 'qrcode.react'
+import { shareOrCopy, buildSettlementShareText, buildPaypayRequestText, isValidPaypayLink } from '../lib/share'
 
 const TABS = ['参加者', '立替'] as const
 
@@ -28,10 +29,12 @@ export default function EventManage() {
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
   const [newPaypay, setNewPaypay] = useState('')
+  const [newPaypayLink, setNewPaypayLink] = useState('')
   const [addingParticipant, setAddingParticipant] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editPaypay, setEditPaypay] = useState('')
+  const [editPaypayLink, setEditPaypayLink] = useState('')
   const [editMethod, setEditMethod] = useState('cash')
   const [newPayMethod, setNewPayMethod] = useState('paypay')
   const [settledMap, setSettledMap] = useState<Record<string, boolean>>({})
@@ -48,7 +51,7 @@ export default function EventManage() {
   const [editingAdvId, setEditingAdvId] = useState<string | null>(null)
   const [editAdvAmount, setEditAdvAmount] = useState('')
   const [editAdvDesc, setEditAdvDesc] = useState('')
-  const [pastParticipants, setPastParticipants] = useState<{ name: string; payment_method: string; paypay_phone: string | null }[]>([])
+  const [pastParticipants, setPastParticipants] = useState<{ name: string; payment_method: string; paypay_phone: string | null; paypay_link_url: string | null; paypay_link_type: 'amount_free' | null }[]>([])
   const [showPastList, setShowPastList] = useState(false)
 
   const load = async () => {
@@ -126,7 +129,7 @@ export default function EventManage() {
       if (otherEventIds.length === 0) return
       const { data: allParts } = await supabase
         .from('participants')
-        .select('name, payment_method, paypay_phone')
+        .select('name, payment_method, paypay_phone, paypay_link_url, paypay_link_type')
         .in('event_id', otherEventIds)
       if (!allParts) return
       // 重複排除（名前ベース）
@@ -153,16 +156,24 @@ export default function EventManage() {
 
   const handleAddOne = async () => {
     if (!id || !newName.trim()) return
+    const linkTrimmed = newPaypayLink.trim()
+    if (newPayMethod === 'paypay' && linkTrimmed && !isValidPaypayLink(linkTrimmed)) {
+      alert('PayPay受取リンクの形式が正しくありません。\nhttps://pay.paypay.ne.jp/... または https://qr.paypay.ne.jp/... の形式で入力してください。')
+      return
+    }
     setAddingParticipant(true)
     const { data: newP } = await addParticipant(id, {
       name: newName.trim(),
       payment_method: newPayMethod,
       paypay_phone: newPayMethod === 'paypay' ? newPaypay.trim() || undefined : undefined,
+      paypay_link_url: newPayMethod === 'paypay' ? linkTrimmed || undefined : undefined,
+      paypay_link_type: newPayMethod === 'paypay' && linkTrimmed ? 'amount_free' : undefined,
     })
     if (newP) {
       setParticipants((prev) => [...prev, newP])
       setNewName('')
       setNewPaypay('')
+      setNewPaypayLink('')
       setNewPayMethod('paypay')
     }
     setAddingParticipant(false)
@@ -170,11 +181,20 @@ export default function EventManage() {
 
   const handleSaveEdit = async (p: Participant) => {
     if (!editName.trim()) { setEditingId(null); return }
+    const linkTrimmed = editPaypayLink.trim()
+    if (editMethod === 'paypay' && linkTrimmed && !isValidPaypayLink(linkTrimmed)) {
+      alert('PayPay受取リンクの形式が正しくありません。\nhttps://pay.paypay.ne.jp/... または https://qr.paypay.ne.jp/... の形式で入力してください。')
+      return
+    }
+    const linkUrl = editMethod === 'paypay' ? (linkTrimmed || null) : null
+    const linkType: 'amount_free' | null = editMethod === 'paypay' && linkTrimmed ? 'amount_free' : null
     // 名前・PayPay・支払い方法を1回のUPDATEで保存
     const { error } = await supabase.from('participants').update({
       name: editName.trim(),
       payment_method: editMethod,
       paypay_phone: editMethod === 'paypay' ? editPaypay.trim() || null : null,
+      paypay_link_url: linkUrl,
+      paypay_link_type: linkType,
     }).eq('id', p.id)
     if (error) { console.error('Update error:', error); alert('更新エラー: ' + error.message); return }
     setParticipants((prev) =>
@@ -183,6 +203,8 @@ export default function EventManage() {
         name: editName.trim(),
         payment_method: editMethod,
         paypay_phone: editMethod === 'paypay' ? editPaypay.trim() || null : null,
+        paypay_link_url: linkUrl,
+        paypay_link_type: linkType,
       } : pp))
     )
     setEditingId(null)
@@ -394,12 +416,24 @@ export default function EventManage() {
                   </div>
                 </div>
                 {newPayMethod === 'paypay' && (
-                  <input
-                    value={newPaypay}
-                    onChange={(e) => setNewPaypay(e.target.value)}
-                    placeholder="PayPay番号 例: 09012345678"
-                    className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
-                  />
+                  <>
+                    <input
+                      value={newPaypay}
+                      onChange={(e) => setNewPaypay(e.target.value)}
+                      placeholder="PayPay番号 例: 09012345678"
+                      className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
+                    />
+                    <input
+                      value={newPaypayLink}
+                      onChange={(e) => setNewPaypayLink(e.target.value)}
+                      placeholder="PayPay受取リンク（任意）"
+                      type="url"
+                      className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
+                    />
+                    <p className="text-[11px] text-sub leading-snug px-1">
+                      番号 / 受取リンクのいずれか1つ以上を登録してください。
+                    </p>
+                  </>
                 )}
               </div>
               <button
@@ -435,6 +469,8 @@ export default function EventManage() {
                               name: pp.name,
                               payment_method: pp.payment_method,
                               paypay_phone: pp.paypay_phone || undefined,
+                              paypay_link_url: pp.paypay_link_url || undefined,
+                              paypay_link_type: pp.paypay_link_type || undefined,
                             })
                             if (newP) setParticipants((prev) => [...prev, newP])
                           }}
@@ -446,7 +482,9 @@ export default function EventManage() {
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{pp.name}</div>
                             <div className="text-[10px] text-sub">
-                              {pp.payment_method === 'paypay' && pp.paypay_phone ? `PayPay: ${pp.paypay_phone}` : pp.payment_method === 'bank' ? '振込' : '現金'}
+                              {pp.payment_method === 'paypay'
+                                ? (pp.paypay_phone ? `PayPay: ${pp.paypay_phone}` : pp.paypay_link_url ? 'PayPay: 受取リンク' : 'PayPay')
+                                : pp.payment_method === 'bank' ? '振込' : '現金'}
                             </div>
                           </div>
                           <span className="text-xs text-green font-semibold shrink-0">+ 追加</span>
@@ -483,12 +521,21 @@ export default function EventManage() {
                         ))}
                       </div>
                       {editMethod === 'paypay' && (
-                        <input
-                          value={editPaypay}
-                          onChange={(e) => setEditPaypay(e.target.value)}
-                          placeholder="PayPay番号"
-                          className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter"
-                        />
+                        <>
+                          <input
+                            value={editPaypay}
+                            onChange={(e) => setEditPaypay(e.target.value)}
+                            placeholder="PayPay番号"
+                            className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter"
+                          />
+                          <input
+                            value={editPaypayLink}
+                            onChange={(e) => setEditPaypayLink(e.target.value)}
+                            placeholder="PayPay受取リンク（任意）"
+                            type="url"
+                            className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter"
+                          />
+                        </>
                       )}
                       <div className="flex gap-2">
                         <button onClick={() => handleSaveEdit(p)} className="text-xs bg-green text-white font-bold px-3 py-1.5 rounded-lg">保存</button>
@@ -518,8 +565,10 @@ export default function EventManage() {
                                 >
                                   {p.paypay_phone}
                                 </button>
+                              ) : p.paypay_link_url ? (
+                                <span className="text-green-dark">受取リンク登録済み</span>
                               ) : (
-                                <span>PayPay</span>
+                                <span className="text-amber-600">未登録</span>
                               )}
                             </>
                           )}
@@ -528,7 +577,7 @@ export default function EventManage() {
                         </div>
                       </div>
                       <button
-                        onClick={() => { setEditingId(p.id); setEditName(p.name); setEditPaypay(p.paypay_phone || ''); setEditMethod(p.payment_method) }}
+                        onClick={() => { setEditingId(p.id); setEditName(p.name); setEditPaypay(p.paypay_phone || ''); setEditPaypayLink(p.paypay_link_url || ''); setEditMethod(p.payment_method) }}
                         className="shrink-0 text-xs text-sub hover:text-green transition px-1.5 py-1"
                       >
                         編集
@@ -588,40 +637,98 @@ export default function EventManage() {
                               <div className={`font-inter text-center text-xl font-extrabold mb-1 ${isSettled ? 'text-sub line-through' : 'text-green'}`}>
                                 ¥{s.amount.toLocaleString()}
                               </div>
-                              {/* 支払い方法 + PayPay送金UI */}
-                              <div className="text-center text-xs text-sub">
-                                {p?.payment_method === 'paypay' && p.paypay_phone ? `PayPay: ${p.paypay_phone}` : p?.payment_method === 'bank' ? '🏦 振込' : '💴 現金'}
-                              </div>
+                              {/* 支払い方法 */}
+                              {(() => {
+                                const isPP = p?.payment_method === 'paypay'
+                                const hasPhone = !!p?.paypay_phone
+                                const hasLink = !!p?.paypay_link_url
+                                const noInfo = isPP && !hasPhone && !hasLink
+                                return (
+                                  <>
+                                    <div className="text-center text-xs text-sub">
+                                      {isPP && hasPhone && `PayPay: ${p!.paypay_phone}`}
+                                      {isPP && !hasPhone && hasLink && 'PayPay 受取リンク'}
+                                      {isPP && noInfo && <span className="text-amber-600">PayPay 情報未登録</span>}
+                                      {p?.payment_method === 'bank' && '🏦 振込'}
+                                      {p?.payment_method === 'cash' && '💴 現金'}
+                                    </div>
 
-                              {/* 幹事向けPayPay送金アクション（PayPayユーザー・未精算のみ） */}
-                              {p?.payment_method === 'paypay' && p.paypay_phone && !isSettled && (
-                                <div className="mt-3 bg-gray-bg rounded-xl p-3">
-                                  <div className="flex items-center gap-1.5 text-xs text-sub mb-2">
-                                    <img src="/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
-                                    PayPay番号: <span className="font-inter font-semibold text-[#1A1A1A]">{p.paypay_phone}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(p.paypay_phone!)
-                                        const el = document.getElementById(`manage-copy-${i}`)
-                                        if (el) { el.textContent = 'コピー済み ✓'; setTimeout(() => { el.textContent = '番号をコピー' }, 2000) }
-                                      }}
-                                      className="flex-1 py-2.5 bg-green text-white text-xs font-bold rounded-lg hover:bg-green-dark transition text-center"
-                                    >
-                                      <span id={`manage-copy-${i}`}>番号をコピー</span>
-                                    </button>
-                                    <span className="text-sub text-xs">▶</span>
-                                    <a
-                                      href="paypay://"
-                                      onClick={() => { navigator.clipboard.writeText(p.paypay_phone!) }}
-                                      className="flex-1 py-2.5 bg-[#FF0033] text-white text-xs font-bold rounded-lg hover:brightness-90 transition text-center no-underline"
-                                    >
-                                      PayPayで送金
-                                    </a>
-                                  </div>
-                                </div>
-                              )}
+                                    {/* 幹事向けPayPay送金アクション（情報あり・未精算のみ） */}
+                                    {isPP && !isSettled && (hasPhone || hasLink) && (
+                                      <div className="mt-3 bg-gray-bg rounded-xl p-3 space-y-2">
+                                        {hasPhone && (
+                                          <div className="flex items-center gap-1.5 text-xs text-sub">
+                                            <img src="/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
+                                            PayPay番号: <span className="font-inter font-semibold text-[#1A1A1A]">{p!.paypay_phone}</span>
+                                          </div>
+                                        )}
+                                        <div className="flex items-center gap-1.5">
+                                          {hasLink ? (
+                                            <a
+                                              href={p!.paypay_link_url!}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="flex-1 py-2.5 bg-[#FF0033] text-white text-xs font-bold rounded-lg hover:brightness-90 transition text-center no-underline"
+                                            >
+                                              リンクで送金
+                                            </a>
+                                          ) : (
+                                            <>
+                                              <button
+                                                onClick={() => {
+                                                  navigator.clipboard.writeText(p!.paypay_phone!)
+                                                  const el = document.getElementById(`manage-copy-${i}`)
+                                                  if (el) { el.textContent = 'コピー済み ✓'; setTimeout(() => { el.textContent = '番号をコピー' }, 2000) }
+                                                }}
+                                                className="flex-1 py-2.5 bg-green text-white text-xs font-bold rounded-lg hover:bg-green-dark transition text-center"
+                                              >
+                                                <span id={`manage-copy-${i}`}>番号をコピー</span>
+                                              </button>
+                                              <a
+                                                href="paypay://"
+                                                onClick={() => { navigator.clipboard.writeText(p!.paypay_phone!) }}
+                                                className="flex-1 py-2.5 bg-[#FF0033] text-white text-xs font-bold rounded-lg hover:brightness-90 transition text-center no-underline"
+                                              >
+                                                PayPayで送金
+                                              </a>
+                                            </>
+                                          )}
+                                        </div>
+                                        <button
+                                          onClick={() => shareOrCopy({
+                                            title: `${s.to}への送金`,
+                                            text: buildSettlementShareText({ toName: s.to, amount: s.amount }),
+                                            url: shareUrl,
+                                          })}
+                                          className="w-full py-2 text-xs font-semibold text-green-dark border border-green/40 bg-white rounded-lg hover:bg-green-light transition"
+                                        >
+                                          💬 LINEで共有
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    {/* PayPay未登録時の依頼導線 */}
+                                    {noInfo && !isSettled && (
+                                      <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+                                        <div className="text-xs text-yellow-800 mb-2 leading-relaxed">
+                                          ⚠ PayPay情報が未登録です。<br />
+                                          ご本人に <strong>PayPay番号</strong> または <strong>受取リンク</strong> の登録を依頼してください。
+                                        </div>
+                                        <button
+                                          onClick={() => shareOrCopy({
+                                            title: `${s.to}さんへPayPay情報の登録依頼`,
+                                            text: buildPaypayRequestText({ toName: s.to }),
+                                            url: shareUrl,
+                                          })}
+                                          className="w-full py-2 text-xs font-bold text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 transition"
+                                        >
+                                          💬 {s.to}さんに依頼する
+                                        </button>
+                                      </div>
+                                    )}
+                                  </>
+                                )
+                              })()}
                             </div>
                             {/* 完了トグル */}
                             <button

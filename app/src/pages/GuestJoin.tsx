@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useEvent, Event, Participant, AdvanceRecord, SettlementRecord } from '../hooks/useEvent'
 import { calculateSettlements, Advance } from '../lib/settle'
 import { supabase } from '../lib/supabase'
+import { shareOrCopy, buildSettlementShareText, buildPaypayRequestText, buildEventPublicUrl, isValidPaypayLink } from '../lib/share'
 
 export default function GuestJoin() {
   const { slug } = useParams<{ slug: string }>()
@@ -20,11 +21,13 @@ export default function GuestJoin() {
   // 参加者登録
   const [joinName, setJoinName] = useState('')
   const [joinPaypay, setJoinPaypay] = useState('')
+  const [joinPaypayLink, setJoinPaypayLink] = useState('')
   const [joinPayMethod, setJoinPayMethod] = useState('paypay')
   const [joining, setJoining] = useState(false)
   const [editingPId, setEditingPId] = useState<string | null>(null)
   const [editPName, setEditPName] = useState('')
   const [editPPaypay, setEditPPaypay] = useState('')
+  const [editPPaypayLink, setEditPPaypayLink] = useState('')
   const [editPMethod, setEditPMethod] = useState('cash')
 
   // 立替フォーム
@@ -96,11 +99,18 @@ export default function GuestJoin() {
 
   const handleJoin = async () => {
     if (!event || !joinName.trim()) return
+    const linkTrimmed = joinPaypayLink.trim()
+    if (joinPayMethod === 'paypay' && linkTrimmed && !isValidPaypayLink(linkTrimmed)) {
+      alert('PayPay受取リンクの形式が正しくありません。\nhttps://pay.paypay.ne.jp/... または https://qr.paypay.ne.jp/... の形式で入力してください。')
+      return
+    }
     setJoining(true)
     const { data: newP } = await addParticipant(event.id, {
       name: joinName.trim(),
       payment_method: joinPayMethod,
       paypay_phone: joinPayMethod === 'paypay' ? joinPaypay.trim() || undefined : undefined,
+      paypay_link_url: joinPayMethod === 'paypay' ? linkTrimmed || undefined : undefined,
+      paypay_link_type: joinPayMethod === 'paypay' && linkTrimmed ? 'amount_free' : undefined,
     })
     if (newP) {
       setParticipants((prev) => [...prev, newP])
@@ -112,6 +122,7 @@ export default function GuestJoin() {
       localStorage.setItem(`kanji_my_name_${slug}`, joinName.trim())
       setJoinName('')
       setJoinPaypay('')
+      setJoinPaypayLink('')
       setJoinPayMethod('paypay')
     }
     setJoining(false)
@@ -119,16 +130,27 @@ export default function GuestJoin() {
 
   const handleEditParticipant = async (p: Participant) => {
     if (!editPName.trim()) { setEditingPId(null); return }
+    const linkTrimmed = editPPaypayLink.trim()
+    if (editPMethod === 'paypay' && linkTrimmed && !isValidPaypayLink(linkTrimmed)) {
+      alert('PayPay受取リンクの形式が正しくありません。\nhttps://pay.paypay.ne.jp/... または https://qr.paypay.ne.jp/... の形式で入力してください。')
+      return
+    }
+    const linkUrl = editPMethod === 'paypay' ? (linkTrimmed || null) : null
+    const linkType: 'amount_free' | null = editPMethod === 'paypay' && linkTrimmed ? 'amount_free' : null
     await supabase.from('participants').update({
       name: editPName.trim(),
       payment_method: editPMethod,
       paypay_phone: editPMethod === 'paypay' ? editPPaypay.trim() || null : null,
+      paypay_link_url: linkUrl,
+      paypay_link_type: linkType,
     }).eq('id', p.id)
     setParticipants((prev) => prev.map((pp) => pp.id === p.id ? {
       ...pp,
       name: editPName.trim(),
       payment_method: editPMethod,
       paypay_phone: editPMethod === 'paypay' ? editPPaypay.trim() || null : null,
+      paypay_link_url: linkUrl,
+      paypay_link_type: linkType,
     } : pp))
     setEditingPId(null)
   }
@@ -301,13 +323,23 @@ export default function GuestJoin() {
                           ))}
                         </div>
                         {editPMethod === 'paypay' && (
-                          <input
-                            value={editPPaypay}
-                            onChange={(e) => setEditPPaypay(e.target.value)}
-                            placeholder="PayPay番号"
-                            type="tel"
-                            className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter"
-                          />
+                          <>
+                            <input
+                              value={editPPaypay}
+                              onChange={(e) => setEditPPaypay(e.target.value)}
+                              placeholder="PayPay番号 / 電話番号"
+                              type="tel"
+                              className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter"
+                            />
+                            <input
+                              value={editPPaypayLink}
+                              onChange={(e) => setEditPPaypayLink(e.target.value)}
+                              placeholder="PayPay受取リンク（任意）"
+                              type="url"
+                              className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter"
+                            />
+                            <p className="text-[11px] text-sub leading-snug">番号 / 受取リンクのいずれか1つでも登録可</p>
+                          </>
                         )}
                         <div className="flex gap-2">
                           <button onClick={() => handleEditParticipant(p)} className="text-xs bg-green text-white font-bold px-3 py-1.5 rounded-lg">保存</button>
@@ -322,13 +354,18 @@ export default function GuestJoin() {
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm">{p.name}</div>
                           <div className="text-xs text-sub flex items-center gap-1">
-                            {p.payment_method === 'paypay' && <><img src="/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" /> {p.paypay_phone || 'PayPay'}</>}
+                            {p.payment_method === 'paypay' && (
+                              <>
+                                <img src="/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" />
+                                {p.paypay_phone || (p.paypay_link_url ? '受取リンク登録済み' : 'PayPay（番号未登録）')}
+                              </>
+                            )}
                             {p.payment_method === 'cash' && '💴 現金'}
                             {p.payment_method === 'bank' && '🏦 振込'}
                           </div>
                         </div>
                         <button
-                          onClick={() => { setEditingPId(p.id); setEditPName(p.name); setEditPPaypay(p.paypay_phone || ''); setEditPMethod(p.payment_method) }}
+                          onClick={() => { setEditingPId(p.id); setEditPName(p.name); setEditPPaypay(p.paypay_phone || ''); setEditPPaypayLink(p.paypay_link_url || ''); setEditPMethod(p.payment_method) }}
                           className="text-xs text-sub hover:text-green"
                         >
                           編集
@@ -380,13 +417,25 @@ export default function GuestJoin() {
                   </div>
                 </div>
                 {joinPayMethod === 'paypay' && (
-                  <input
-                    value={joinPaypay}
-                    onChange={(e) => setJoinPaypay(e.target.value)}
-                    placeholder="PayPay番号 / 電話番号"
-                    type="tel"
-                    className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
-                  />
+                  <>
+                    <input
+                      value={joinPaypay}
+                      onChange={(e) => setJoinPaypay(e.target.value)}
+                      placeholder="PayPay番号 / 電話番号"
+                      type="tel"
+                      className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
+                    />
+                    <input
+                      value={joinPaypayLink}
+                      onChange={(e) => setJoinPaypayLink(e.target.value)}
+                      placeholder="PayPay受取リンク（任意）"
+                      type="url"
+                      className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green font-inter"
+                    />
+                    <p className="text-[11px] text-sub leading-snug px-1">
+                      番号 / 受取リンクのいずれか1つ以上を登録してください。受取リンクは PayPayアプリの「もらう」から発行できます。
+                    </p>
+                  </>
                 )}
               </div>
               <button
@@ -576,7 +625,10 @@ export default function GuestJoin() {
                     const key = `${s.from}-${s.to}`
                     const isSettled = !!settledMap[key]
                     const payee = participants.find((p) => p.name === s.to)
-                    const isPayPay = payee?.payment_method === 'paypay' && payee?.paypay_phone
+                    const isPayPay = payee?.payment_method === 'paypay'
+                    const hasPaypayPhone = !!payee?.paypay_phone
+                    const hasPaypayLink = !!payee?.paypay_link_url
+                    const noPaypayInfo = isPayPay && !hasPaypayPhone && !hasPaypayLink
                     return (
                       <div key={i} className={`border rounded-xl overflow-hidden transition ${isSettled ? 'bg-gray-bg/50 border-border opacity-60' : 'bg-white border-border'}`}>
                         <div className="p-4">
@@ -597,32 +649,77 @@ export default function GuestJoin() {
                           </div>
 
                           {/* PayPay送金UI（PayPayの人のみ・未精算時のみ） */}
-                          {isPayPay && !isSettled && (
-                            <div className="mt-3 bg-gray-bg rounded-xl p-3">
-                              <div className="flex items-center gap-1.5 text-xs text-sub mb-2">
-                                <img src="/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
-                                PayPay番号: <span className="font-inter font-semibold text-[#1A1A1A]">{payee.paypay_phone}</span>
-                              </div>
+                          {isPayPay && !isSettled && (hasPaypayPhone || hasPaypayLink) && (
+                            <div className="mt-3 bg-gray-bg rounded-xl p-3 space-y-2">
+                              {hasPaypayPhone && (
+                                <div className="flex items-center gap-1.5 text-xs text-sub">
+                                  <img src="/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
+                                  PayPay番号: <span className="font-inter font-semibold text-[#1A1A1A]">{payee.paypay_phone}</span>
+                                </div>
+                              )}
                               <div className="flex items-center gap-1.5">
-                                <button
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(payee.paypay_phone!)
-                                    const el = document.getElementById(`copy-text-${i}`)
-                                    if (el) { el.textContent = 'コピー済み ✓'; setTimeout(() => { el.textContent = '番号をコピー' }, 2000) }
-                                  }}
-                                  className="flex-1 py-2.5 bg-green text-white text-xs font-bold rounded-lg hover:bg-green-dark transition text-center"
-                                >
-                                  <span id={`copy-text-${i}`}>番号をコピー</span>
-                                </button>
-                                <span className="text-sub text-xs">▶</span>
-                                <a
-                                  href="paypay://"
-                                  onClick={() => { navigator.clipboard.writeText(payee.paypay_phone!) }}
-                                  className="flex-1 py-2.5 bg-[#FF0033] text-white text-xs font-bold rounded-lg hover:brightness-90 transition text-center no-underline"
-                                >
-                                  PayPayで送金
-                                </a>
+                                {hasPaypayLink ? (
+                                  <a
+                                    href={payee.paypay_link_url!}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 py-2.5 bg-[#FF0033] text-white text-xs font-bold rounded-lg hover:brightness-90 transition text-center no-underline"
+                                  >
+                                    リンクで送金
+                                  </a>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(payee.paypay_phone!)
+                                        const el = document.getElementById(`copy-text-${i}`)
+                                        if (el) { el.textContent = 'コピー済み ✓'; setTimeout(() => { el.textContent = '番号をコピー' }, 2000) }
+                                      }}
+                                      className="flex-1 py-2.5 bg-green text-white text-xs font-bold rounded-lg hover:bg-green-dark transition text-center"
+                                    >
+                                      <span id={`copy-text-${i}`}>番号をコピー</span>
+                                    </button>
+                                    <a
+                                      href="paypay://"
+                                      onClick={() => { navigator.clipboard.writeText(payee.paypay_phone!) }}
+                                      className="flex-1 py-2.5 bg-[#FF0033] text-white text-xs font-bold rounded-lg hover:brightness-90 transition text-center no-underline"
+                                    >
+                                      PayPayで送金
+                                    </a>
+                                  </>
+                                )}
                               </div>
+                              {/* シェアボタン */}
+                              <button
+                                onClick={() => shareOrCopy({
+                                  title: `${s.to}への送金`,
+                                  text: buildSettlementShareText({ toName: s.to, amount: s.amount }),
+                                  url: buildEventPublicUrl(slug || ''),
+                                })}
+                                className="w-full py-2 text-xs font-semibold text-green-dark border border-green/40 bg-white rounded-lg hover:bg-green-light transition"
+                              >
+                                💬 LINEで共有
+                              </button>
+                            </div>
+                          )}
+
+                          {/* PayPay情報 未登録時の依頼導線 */}
+                          {noPaypayInfo && !isSettled && (
+                            <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+                              <div className="text-xs text-yellow-800 mb-2 leading-relaxed">
+                                ⚠ PayPay情報が未登録です。<br />
+                                ご本人に <strong>PayPay番号</strong> または <strong>受取リンク</strong> の登録を依頼してください。
+                              </div>
+                              <button
+                                onClick={() => shareOrCopy({
+                                  title: `${s.to}さんへPayPay情報の登録依頼`,
+                                  text: buildPaypayRequestText({ toName: s.to }),
+                                  url: buildEventPublicUrl(slug || ''),
+                                })}
+                                className="w-full py-2 text-xs font-bold text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 transition"
+                              >
+                                💬 {s.to}さんに依頼する
+                              </button>
                             </div>
                           )}
                         </div>
@@ -650,13 +747,17 @@ export default function GuestJoin() {
                 <button
                   onClick={() => {
                     const text = settlements
-                      .map((s) => `${s.from} → ${s.to}: ¥${s.amount.toLocaleString()}`)
+                      .map((s) => `▼${s.from} → ${s.to}: ¥${s.amount.toLocaleString()}`)
                       .join('\n')
-                    navigator.clipboard.writeText(text)
+                    shareOrCopy({
+                      title: `${event.title} の精算結果`,
+                      text,
+                      url: buildEventPublicUrl(slug || ''),
+                    })
                   }}
                   className="w-full py-3 border-2 border-green text-green-dark font-bold rounded-xl text-sm hover:bg-green-light transition"
                 >
-                  精算結果をコピー
+                  💬 精算結果を共有
                 </button>
               </>
             )}

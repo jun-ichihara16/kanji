@@ -35,8 +35,14 @@ create table if not exists participants (
   name text not null,
   payment_method text not null,
   paypay_phone text,
+  paypay_link_url text,
+  paypay_link_type text check (paypay_link_type is null or paypay_link_type in ('amount_free')),
   is_paid boolean default false,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  constraint participants_paypay_link_url_check check (
+    paypay_link_url is null
+    or paypay_link_url ~ '^https://(pay|qr)\.paypay\.ne\.jp/'
+  )
 );
 
 -- 立替記録

@@ -233,7 +233,7 @@ serve(async (req) => {
 
           const { data: participants } = await supabase
             .from('participants')
-            .select('name, paypay_phone')
+            .select('name, paypay_phone, paypay_link_url')
             .eq('event_id', ev.id)
             .order('created_at', { ascending: true })
 
@@ -244,7 +244,9 @@ serve(async (req) => {
             }])
           } else {
             const list = participants.map((p: any, i: number) => {
-              const pp = p.paypay_phone ? ` (PayPay: ${p.paypay_phone})` : ''
+              const pp = p.paypay_phone
+                ? ` (PayPay: ${p.paypay_phone})`
+                : p.paypay_link_url ? ' (PayPay受取リンク登録済み)' : ''
               return `${i + 1}. ${p.name}${pp}`
             }).join('\n')
             await replyMessage(replyToken, [{
@@ -350,7 +352,7 @@ serve(async (req) => {
 
           const { data: participants } = await supabase
             .from('participants')
-            .select('name, paypay_phone')
+            .select('name, paypay_phone, paypay_link_url')
             .eq('event_id', ev.id)
 
           const names = (participants || []).map((p: any) => p.name)
@@ -367,8 +369,10 @@ serve(async (req) => {
           } else {
             const total = advances.reduce((s: number, a: any) => s + a.amount, 0)
             const lines = settlements.map((s) => {
-              const payee = (participants || []).find((p: any) => p.name === s.to && p.paypay_phone)
-              const pp = payee ? `\n   PayPay: ${payee.paypay_phone}` : ''
+              const payee = (participants || []).find((p: any) => p.name === s.to)
+              const pp = payee?.paypay_phone
+                ? `\n   PayPay: ${payee.paypay_phone}`
+                : payee?.paypay_link_url ? `\n   PayPay受取: ${payee.paypay_link_url}` : ''
               return `${s.from} → ${s.to}: ¥${s.amount.toLocaleString()}${pp}`
             }).join('\n')
             await replyMessage(replyToken, [{
