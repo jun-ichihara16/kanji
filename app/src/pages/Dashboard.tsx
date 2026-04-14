@@ -48,6 +48,7 @@ export default function Dashboard() {
         const settStatus: Record<string, { total: number; settled: number }> = {}
         for (const ev of data) {
           const { data: setts } = await fetchSettlements(ev.id)
+          console.log('[Dashboard] settlements for', ev.title, ':', setts?.length, 'settled:', setts?.filter((s: any) => s.is_settled).length)
           if (setts && setts.length > 0) {
             settStatus[ev.id] = {
               total: setts.length,
@@ -56,6 +57,7 @@ export default function Dashboard() {
           }
         }
         setSettlementStatus(settStatus)
+        console.log('[Dashboard] settlementStatus:', settStatus)
       }
       setLoading(false)
     })
@@ -145,9 +147,12 @@ export default function Dashboard() {
                               {(() => {
                                 const ss = settlementStatus[ev.id]
                                 if (isArchived) return <span className="shrink-0 text-[10px] bg-gray-bg text-sub px-2 py-0.5 rounded-full">完了</span>
+                                // settlementsレコードがあり、全てis_settled=trueなら精算完了
                                 if (ss && ss.total > 0 && ss.settled >= ss.total) return <span className="shrink-0 text-[10px] bg-green-light text-green-dark border border-green/20 px-2 py-0.5 rounded-full font-bold">精算完了</span>
+                                // settlementsレコードがあるが一部未精算
                                 if (ss && ss.total > 0 && ss.settled < ss.total) return <span className="shrink-0 text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full font-bold">未精算あり</span>
-                                if (total > 0) return <span className="shrink-0 text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded-full font-bold">精算待ち</span>
+                                // 立替はあるがsettlementsレコードがない（まだ精算ボタンを押していない）
+                                if (total > 0 && (!ss || ss.total === 0)) return <span className="shrink-0 text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded-full font-bold">精算待ち</span>
                                 return null
                               })()}
                             </div>
