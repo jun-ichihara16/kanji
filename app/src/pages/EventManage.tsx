@@ -1,6 +1,16 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { useEvent, Event, Participant, AdvanceRecord, SettlementRecord, SplitMode } from '../hooks/useEvent'
+import { useEvent, Event, Participant, AdvanceRecord, SettlementRecord, SplitMode, EVENT_CATEGORIES, EventCategory } from '../hooks/useEvent'
+
+const CATEGORY_EMOJI: Record<EventCategory, string> = {
+  '飲み会': '🍻',
+  'ランチ': '🍽️',
+  '旅行': '✈️',
+  '合宿': '🏕️',
+  '歓送迎会': '🎉',
+  '誕生日': '🎂',
+  'その他': '✨',
+}
 import { calculateSettlements, Settlement, Advance, SplitProfile } from '../lib/settle'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -47,6 +57,7 @@ export default function EventManage() {
   const [editTitle, setEditTitle] = useState('')
   const [editDate, setEditDate] = useState('')
   const [editVenue, setEditVenue] = useState('')
+  const [editCategory, setEditCategory] = useState<EventCategory | null>(null)
   const [editingAdvId, setEditingAdvId] = useState<string | null>(null)
   const [editAdvAmount, setEditAdvAmount] = useState('')
   const [editAdvDesc, setEditAdvDesc] = useState('')
@@ -276,8 +287,9 @@ export default function EventManage() {
       title: editTitle.trim(),
       event_date: editDate || undefined,
       venue_name: editVenue.trim() || undefined,
+      category: editCategory,
     })
-    setEvent((prev) => prev ? { ...prev, title: editTitle.trim(), event_date: editDate || prev.event_date, venue_name: editVenue.trim() || prev.venue_name } : prev)
+    setEvent((prev) => prev ? { ...prev, title: editTitle.trim(), event_date: editDate || prev.event_date, venue_name: editVenue.trim() || prev.venue_name, category: editCategory } : prev)
     setShowEditEvent(false)
   }
 
@@ -362,7 +374,7 @@ export default function EventManage() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => { setEditTitle(event.title); setEditDate(event.event_date || ''); setEditVenue(event.venue_name || ''); setShowEditEvent(true) }}
+            onClick={() => { setEditTitle(event.title); setEditDate(event.event_date || ''); setEditVenue(event.venue_name || ''); setEditCategory(event.category); setShowEditEvent(true) }}
             className="text-xs text-sub hover:text-green transition"
           >
             編集
@@ -396,6 +408,35 @@ export default function EventManage() {
                 <label className="text-xs font-semibold text-sub mb-1 block">イベント名 *</label>
                 <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
                   className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-sub mb-1 block">カテゴリ</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {EVENT_CATEGORIES.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setEditCategory(editCategory === c ? null : c)}
+                      className={`py-2 px-1 rounded-xl text-[11px] font-semibold border-2 transition flex flex-col items-center gap-0.5 ${
+                        editCategory === c
+                          ? 'border-green bg-green-light text-green-dark'
+                          : 'border-border bg-white text-sub'
+                      }`}
+                    >
+                      <span className="text-base leading-none">{CATEGORY_EMOJI[c]}</span>
+                      <span>{c}</span>
+                    </button>
+                  ))}
+                </div>
+                {editCategory && (
+                  <button
+                    type="button"
+                    onClick={() => setEditCategory(null)}
+                    className="mt-1.5 text-[10px] text-sub hover:text-green underline"
+                  >
+                    カテゴリを外す
+                  </button>
+                )}
               </div>
               <div>
                 <label className="text-xs font-semibold text-sub mb-1 block">日時</label>

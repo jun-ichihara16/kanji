@@ -131,7 +131,7 @@ export function useEvent() {
     return { error }
   }
 
-  async function updateEvent(id: string, data: { title?: string; event_date?: string; venue_name?: string; status?: string }) {
+  async function updateEvent(id: string, data: { title?: string; event_date?: string; venue_name?: string; status?: string; category?: EventCategory | null }) {
     const { error } = await supabase.from('events').update(data).eq('id', id)
     return { error }
   }
