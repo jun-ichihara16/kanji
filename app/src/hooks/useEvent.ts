@@ -1,6 +1,13 @@
 import { supabase } from '../lib/supabase'
 import { nanoid } from 'nanoid'
 
+export type SplitMode = 'equal' | 'ai_mild' | 'ai_strict' | 'manual'
+export type EventStatus = 'active' | 'archived'
+export type EventCategory = '飲み会' | 'ランチ' | '旅行' | '合宿' | '歓送迎会' | '誕生日' | 'その他'
+export const EVENT_CATEGORIES: EventCategory[] = [
+  '飲み会', 'ランチ', '旅行', '合宿', '歓送迎会', '誕生日', 'その他',
+]
+
 export interface Event {
   id: string
   slug: string
@@ -14,6 +21,9 @@ export interface Event {
   line_group_id: string | null
   reminder_enabled: boolean
   reminder_time: string | null
+  split_mode: SplitMode
+  status: EventStatus
+  category: EventCategory | null
   created_at: string
 }
 
@@ -24,6 +34,9 @@ export interface Participant {
   payment_method: string
   paypay_phone: string | null
   is_paid: boolean
+  tags: string[]
+  weight: number
+  fixed_amount: number | null
   created_at: string
 }
 
@@ -98,6 +111,7 @@ export function useEvent() {
     event_date?: string
     fee_per_person?: number
     memo?: string
+    category?: EventCategory
   }) {
     const slug = nanoid(12)
     const { data, error } = await supabase
@@ -165,6 +179,28 @@ export function useEvent() {
       .from('participants')
       .update({ is_paid: isPaid })
       .eq('id', id)
+    return { error }
+  }
+
+  // 傾斜機能: 参加者の tags / weight / fixed_amount を更新
+  async function updateParticipantSplit(id: string, patch: {
+    tags?: string[]
+    weight?: number
+    fixed_amount?: number | null
+  }) {
+    const { error } = await supabase
+      .from('participants')
+      .update(patch)
+      .eq('id', id)
+    return { error }
+  }
+
+  // 傾斜機能: イベントの split_mode を更新
+  async function updateSplitMode(eventId: string, mode: SplitMode) {
+    const { error } = await supabase
+      .from('events')
+      .update({ split_mode: mode })
+      .eq('id', eventId)
     return { error }
   }
 
@@ -266,6 +302,8 @@ export function useEvent() {
     updateParticipantName,
     deleteParticipant,
     togglePaid,
+    updateParticipantSplit,
+    updateSplitMode,
     fetchAdvances,
     fetchAdvancesByEventIds,
     addAdvance,

@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { useEvent, Event, Participant, AdvanceRecord, SettlementRecord } from '../hooks/useEvent'
-import { calculateSettlements, Settlement, Advance } from '../lib/settle'
+import { useEvent, Event, Participant, AdvanceRecord, SettlementRecord, SplitMode } from '../hooks/useEvent'
+import { calculateSettlements, Settlement, Advance, SplitProfile } from '../lib/settle'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import SummaryCard from '../components/SummaryCard'
 import AdvancePaymentForm from '../components/AdvancePaymentForm'
+import SplitSettingsModal from '../components/SplitSettingsModal'
 import { QRCodeCanvas } from 'qrcode.react'
 
 const TABS = ['参加者', '立替'] as const
@@ -16,6 +17,7 @@ export default function EventManage() {
     fetchEventById, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, togglePaid,
     fetchAdvances, addAdvance, deleteAdvance, deleteEvent, updateEvent,
     fetchSettlements, upsertSettlement, updateReminderSettings, sendGroupReminder,
+    updateParticipantSplit, updateSplitMode,
     fetchMyEvents,
   } = useEvent()
   const { user } = useAuth()
@@ -50,6 +52,7 @@ export default function EventManage() {
   const [editAdvDesc, setEditAdvDesc] = useState('')
   const [pastParticipants, setPastParticipants] = useState<{ name: string; payment_method: string; paypay_phone: string | null }[]>([])
   const [showPastList, setShowPastList] = useState(false)
+  const [showSplitModal, setShowSplitModal] = useState(false)
 
   const load = async () => {
     if (!id) return
@@ -140,7 +143,7 @@ export default function EventManage() {
     })
   }, [user, id])
 
-  // 自動精算計算
+  // 自動精算計算（傾斜対応：participants.weight/fixed_amount を使う）
   const computedSettlements = useMemo(() => {
     if (advances.length === 0 || participants.length === 0) return []
     const advs: Advance[] = advances.map((a) => ({
@@ -148,8 +151,49 @@ export default function EventManage() {
       splitTarget: a.split_target as 'all' | 'specific',
       targetNames: a.target_names ?? undefined,
     }))
-    return calculateSettlements(advs, participants.map((p) => p.name))
+    const profiles: SplitProfile[] = participants.map((p) => ({
+      name: p.name,
+      weight: p.weight ?? 1.0,
+      fixed_amount: p.fixed_amount ?? null,
+    }))
+    return calculateSettlements(advs, participants.map((p) => p.name), profiles)
   }, [advances, participants])
+
+  // 立替合計（傾斜モーダルのプレビュー用）
+  const totalAdvance = useMemo(
+    () => advances.reduce((sum, a) => sum + a.amount, 0),
+    [advances]
+  )
+
+  // 傾斜設定の保存
+  const handleSaveSplitSettings = async (
+    mode: SplitMode,
+    updates: { id: string; tags: string[]; weight: number; fixed_amount: number | null }[]
+  ) => {
+    if (!id) return
+    // 1. events.split_mode を更新
+    await updateSplitMode(id, mode)
+    setEvent((prev) => prev ? { ...prev, split_mode: mode } : prev)
+
+    // 2. 各 participant の tags / weight / fixed_amount を更新
+    await Promise.all(
+      updates.map((u) =>
+        updateParticipantSplit(u.id, {
+          tags: u.tags,
+          weight: u.weight,
+          fixed_amount: u.fixed_amount,
+        })
+      )
+    )
+
+    // 3. ローカルstateを更新
+    setParticipants((prev) =>
+      prev.map((p) => {
+        const u = updates.find((uu) => uu.id === p.id)
+        return u ? { ...p, tags: u.tags, weight: u.weight, fixed_amount: u.fixed_amount } : p
+      })
+    )
+  }
 
   const handleAddOne = async () => {
     if (!id || !newName.trim()) return
@@ -251,6 +295,24 @@ export default function EventManage() {
     await upsertSettlement(id, fromName, toName, amount, newVal)
   }
 
+  // 全員の精算が完了したら自動でイベントをアーカイブ（完了）にする
+  useEffect(() => {
+    if (!event || !id) return
+    if (event.status === 'archived') return
+    if (computedSettlements.length === 0) return
+
+    const allSettled = computedSettlements.every(
+      (s) => !!settledMap[`${s.from}-${s.to}`]
+    )
+    if (!allSettled) return
+
+    // 自動アーカイブ（1度だけ）
+    (async () => {
+      await updateEvent(id, { status: 'archived' })
+      setEvent((prev) => prev ? { ...prev, status: 'archived' } : prev)
+    })()
+  }, [settledMap, computedSettlements, event?.status, id])
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -276,10 +338,23 @@ export default function EventManage() {
 
   return (
     <div className="flex-1 flex flex-col">
+      {/* 自動アーカイブ通知 */}
+      {event.status === 'archived' && (
+        <div className="bg-green-light border-b border-green/30 px-4 py-2 text-xs text-green-dark flex items-center gap-2">
+          <span>✓</span>
+          <span className="font-semibold">このイベントは精算完了につき自動でアーカイブされました</span>
+        </div>
+      )}
+
       {/* Event title */}
       <div className="px-4 pt-4 pb-2 flex items-start justify-between">
         <div className="flex-1">
-          <h2 className="text-lg font-bold">{event.title}</h2>
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            {event.title}
+            {event.status === 'archived' && (
+              <span className="text-[10px] bg-sub/10 text-sub px-2 py-0.5 rounded-full font-semibold">完了</span>
+            )}
+          </h2>
           <div className="flex items-center gap-2 mt-0.5">
             {event.event_date && <span className="text-xs text-sub">{event.event_date}</span>}
             {event.venue_name && <span className="text-xs text-sub">📍 {event.venue_name}</span>}
@@ -550,6 +625,27 @@ export default function EventManage() {
             <div className="text-xs text-sub text-center mb-4">{participants.length}人 登録済み</div>
 
 
+            {/* 精算方法設定ボタン（傾斜機能） */}
+            {participants.length > 0 && (
+              <div className="mt-4 mb-3">
+                <button
+                  onClick={() => setShowSplitModal(true)}
+                  className="w-full py-3 px-4 bg-white border-2 border-green text-green-dark rounded-xl text-sm font-bold hover:bg-green-light/50 transition flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-lg">🤖</span>
+                    <span>精算方法を決める（傾斜設定）</span>
+                  </span>
+                  <span className="text-xs font-semibold bg-green-light text-green-dark px-2 py-1 rounded-full">
+                    {event.split_mode === 'equal' && '全員同額'}
+                    {event.split_mode === 'ai_mild' && 'AI マイルド'}
+                    {event.split_mode === 'ai_strict' && 'AI しっかり'}
+                    {event.split_mode === 'manual' && '手動調整'}
+                  </span>
+                </button>
+              </div>
+            )}
+
             {/* 精算状況サマリー（自動計算） */}
             {computedSettlements.length > 0 && (
               <div className="mt-4">
@@ -743,6 +839,17 @@ export default function EventManage() {
         </button>
         </div>
       </div>
+
+      {/* 傾斜設定モーダル */}
+      <SplitSettingsModal
+        open={showSplitModal}
+        onClose={() => setShowSplitModal(false)}
+        eventId={event.id}
+        participants={participants}
+        totalAdvance={totalAdvance}
+        currentMode={event.split_mode ?? 'equal'}
+        onSave={handleSaveSplitSettings}
+      />
 
       {/* QRモーダル */}
       {showQR && (
