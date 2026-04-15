@@ -64,6 +64,7 @@ export default function EventManage() {
   const [pastParticipants, setPastParticipants] = useState<{ name: string; payment_method: string; paypay_phone: string | null }[]>([])
   const [showPastList, setShowPastList] = useState(false)
   const [showSplitModal, setShowSplitModal] = useState(false)
+  const [showCompleted, setShowCompleted] = useState(false)
 
   const load = async () => {
     if (!id) return
@@ -175,6 +176,98 @@ export default function EventManage() {
     () => advances.reduce((sum, a) => sum + a.amount, 0),
     [advances]
   )
+
+  // ===== 精算UI: 集計 & グルーピング =====
+  const settlementStats = useMemo(() => {
+    const total = computedSettlements.length
+    const settledList = computedSettlements.filter((s) => settledMap[`${s.from}-${s.to}`])
+    const unsettledList = computedSettlements.filter((s) => !settledMap[`${s.from}-${s.to}`])
+    const totalAmount = computedSettlements.reduce((sum, s) => sum + s.amount, 0)
+    const settledAmount = settledList.reduce((sum, s) => sum + s.amount, 0)
+    const unsettledAmount = unsettledList.reduce((sum, s) => sum + s.amount, 0)
+    return {
+      total, settledCount: settledList.length, unsettledCount: unsettledList.length,
+      totalAmount, settledAmount, unsettledAmount,
+      allSettled: total > 0 && settledList.length === total,
+    }
+  }, [computedSettlements, settledMap])
+
+  // 受取人ごとにグルーピング
+  const groupedByPayee = useMemo(() => {
+    const groups: Record<string, {
+      payeeName: string
+      totalAmount: number
+      settledAmount: number
+      unsettledAmount: number
+      allSettled: boolean
+      settlements: (Settlement & { isSettled: boolean })[]
+    }> = {}
+    for (const s of computedSettlements) {
+      const isSettled = !!settledMap[`${s.from}-${s.to}`]
+      if (!groups[s.to]) {
+        groups[s.to] = {
+          payeeName: s.to,
+          totalAmount: 0, settledAmount: 0, unsettledAmount: 0,
+          allSettled: true, settlements: [],
+        }
+      }
+      const g = groups[s.to]
+      g.settlements.push({ ...s, isSettled })
+      g.totalAmount += s.amount
+      if (isSettled) g.settledAmount += s.amount
+      else {
+        g.unsettledAmount += s.amount
+        g.allSettled = false
+      }
+    }
+    // 未精算が多い順 → 金額大きい順
+    return Object.values(groups).sort((a, b) => {
+      if (a.allSettled !== b.allSettled) return a.allSettled ? 1 : -1
+      return b.unsettledAmount - a.unsettledAmount
+    }).map((g) => ({
+      ...g,
+      // 各グループ内: 未精算上、金額大きい順
+      settlements: g.settlements.sort((a, b) => {
+        if (a.isSettled !== b.isSettled) return a.isSettled ? 1 : -1
+        return b.amount - a.amount
+      })
+    }))
+  }, [computedSettlements, settledMap])
+
+  // 幹事視点サマリー（自分が幹事かつ参加者としても登録されている場合）
+  const hostStats = useMemo(() => {
+    // 代表名は複数の場所に登録されうるので、立替者を「幹事候補」として扱う
+    const payerNames = new Set(advances.map((a) => a.payer_name))
+    if (payerNames.size === 0) return null
+    // 最も立替額が大きい人を幹事と推定
+    const byPayer: Record<string, number> = {}
+    for (const a of advances) byPayer[a.payer_name] = (byPayer[a.payer_name] ?? 0) + a.amount
+    const hostName = Object.entries(byPayer).sort(([, a], [, b]) => b - a)[0]?.[0]
+    if (!hostName) return null
+
+    const toReceive = computedSettlements
+      .filter((s) => s.to === hostName && !settledMap[`${s.from}-${s.to}`])
+      .reduce((sum, s) => sum + s.amount, 0)
+    const toPay = computedSettlements
+      .filter((s) => s.from === hostName && !settledMap[`${s.from}-${s.to}`])
+      .reduce((sum, s) => sum + s.amount, 0)
+
+    return { hostName, toReceive, toPay }
+  }, [advances, computedSettlements, settledMap])
+
+  // 手動リマインド（C-1）
+  const [bulkReminderSent, setBulkReminderSent] = useState(false)
+  const [bulkSending, setBulkSending] = useState(false)
+  const handleBulkReminder = async () => {
+    if (!event?.line_group_id || !id) return
+    setBulkSending(true)
+    const { ok } = await sendGroupReminder(event.id, user?.id)
+    setBulkSending(false)
+    if (ok) {
+      setBulkReminderSent(true)
+      setTimeout(() => setBulkReminderSent(false), 3000)
+    }
+  }
 
   // 傾斜設定の保存
   const handleSaveSplitSettings = async (
@@ -687,92 +780,208 @@ export default function EventManage() {
               </div>
             )}
 
-            {/* 精算状況サマリー（自動計算） */}
+            {/* 精算状況サマリー（自動計算・改善版） */}
             {computedSettlements.length > 0 && (
               <div className="mt-4">
                 <h3 className="text-sm font-bold mb-2">精算状況</h3>
-                {(() => {
-                  const settledCount = computedSettlements.filter((s) => settledMap[`${s.from}-${s.to}`]).length
+
+                {/* ========== 全員完了時のお祝いUI（B-1） ========== */}
+                {settlementStats.allSettled ? (
+                  <div className="bg-gradient-to-br from-green-light to-green/10 border-2 border-green rounded-2xl p-5 text-center mb-3">
+                    <div className="text-4xl mb-2">🎉</div>
+                    <div className="text-base font-bold text-green-dark mb-1">全員の精算が完了しました！</div>
+                    <div className="text-xs text-sub mb-2">
+                      合計 <span className="font-inter font-bold text-dark">¥{settlementStats.totalAmount.toLocaleString()}</span>
+                      <span className="mx-1">/</span>
+                      {settlementStats.total}件
+                    </div>
+                    <div className="text-[11px] text-sub">お疲れさまでした ✨</div>
+                  </div>
+                ) : (
+                  <>
+                    {/* ========== 金額ベースの進捗サマリー（A-1） ========== */}
+                    <div className="bg-white border-2 border-green/20 rounded-2xl p-4 mb-3">
+                      <div className="flex items-baseline justify-between mb-2">
+                        <span className="text-xs font-semibold text-sub">💰 回収状況</span>
+                        <span className="text-[10px] text-sub">
+                          {settlementStats.settledCount}件完了 / 残り{settlementStats.unsettledCount}件
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-1 mb-2">
+                        <span className="font-inter text-2xl font-extrabold text-green-dark">
+                          ¥{settlementStats.settledAmount.toLocaleString()}
+                        </span>
+                        <span className="text-sub text-sm font-inter">/ ¥{settlementStats.totalAmount.toLocaleString()}</span>
+                      </div>
+                      <div className="h-2 bg-border rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-green to-green-dark rounded-full transition-all"
+                          style={{
+                            width: `${settlementStats.totalAmount > 0
+                              ? (settlementStats.settledAmount / settlementStats.totalAmount) * 100
+                              : 0}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="text-[10px] text-sub text-right mt-1 font-inter">
+                        {settlementStats.totalAmount > 0
+                          ? Math.round((settlementStats.settledAmount / settlementStats.totalAmount) * 100)
+                          : 0}%
+                      </div>
+                    </div>
+
+                    {/* ========== 幹事視点サマリーカード（C-2） ========== */}
+                    {hostStats && (hostStats.toReceive > 0 || hostStats.toPay > 0) && (
+                      <div className="grid grid-cols-2 gap-2 mb-3">
+                        <div className="bg-white border border-border rounded-xl p-3">
+                          <div className="text-[10px] text-sub mb-0.5">💸 {hostStats.hostName}さんが受け取る</div>
+                          <div className="font-inter text-lg font-extrabold text-green-dark">
+                            ¥{hostStats.toReceive.toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="bg-white border border-border rounded-xl p-3">
+                          <div className="text-[10px] text-sub mb-0.5">💳 {hostStats.hostName}さんが支払う</div>
+                          <div className={`font-inter text-lg font-extrabold ${hostStats.toPay > 0 ? 'text-orange' : 'text-sub'}`}>
+                            ¥{hostStats.toPay.toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ========== 一括リマインド（C-1） ========== */}
+                    {event.line_group_id && settlementStats.unsettledCount > 0 && (
+                      <button
+                        onClick={handleBulkReminder}
+                        disabled={bulkSending || bulkReminderSent}
+                        className={`w-full mb-3 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                          bulkReminderSent
+                            ? 'bg-gray-bg text-sub'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+                        }`}
+                      >
+                        {bulkSending
+                          ? '送信中...'
+                          : bulkReminderSent
+                            ? '✓ LINEに通知しました'
+                            : `⚡ 未精算者${settlementStats.unsettledCount}名にLINE通知を送る`}
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {/* ========== 受取人グループ表示（B-2 + A-2 + A-3） ========== */}
+                {groupedByPayee.map((group) => {
+                  const payeeParticipant = participants.find((pp) => pp.name === group.payeeName)
+                  const isGroupArchived = group.allSettled
+                  // 完了グループは折りたたみ対象、showCompletedがtrueなら表示
+                  if (isGroupArchived && !showCompleted) return null
+
                   return (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs text-sub mb-1">
-                        <span>進捗</span>
-                        <span><span className="text-green font-bold">{settledCount}</span> / {computedSettlements.length} 件完了</span>
+                    <div key={group.payeeName} className="mb-4">
+                      {/* グループヘッダー */}
+                      <div className={`flex items-center gap-2 mb-2 px-1 ${isGroupArchived ? 'opacity-50' : ''}`}>
+                        <div className="w-7 h-7 rounded-full bg-green/10 text-green-dark flex items-center justify-center text-xs font-bold shrink-0">
+                          {group.payeeName.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-bold truncate">
+                            {group.payeeName}さんへ
+                            {isGroupArchived && <span className="text-[10px] text-sub ml-1.5">✓ 全完了</span>}
+                          </div>
+                          <div className="text-[10px] text-sub">
+                            <span className="font-inter font-bold text-green-dark">¥{group.unsettledAmount.toLocaleString()}</span>
+                            {group.settledAmount > 0 && (
+                              <span className="text-sub"> / 合計 ¥{group.totalAmount.toLocaleString()}</span>
+                            )}
+                            <span className="ml-1">
+                              ({group.settlements.length - group.settlements.filter((s) => s.isSettled).length}件未精算
+                              {group.settlements.filter((s) => s.isSettled).length > 0 && ` / ${group.settlements.filter((s) => s.isSettled).length}件完了`})
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="h-1.5 bg-border rounded-full overflow-hidden mb-2">
-                        <div className="h-full bg-green rounded-full transition-all" style={{ width: `${(settledCount / computedSettlements.length) * 100}%` }} />
-                      </div>
-                      {computedSettlements.map((s, i) => {
-                        const key = `${s.from}-${s.to}`
-                        const isSettled = !!settledMap[key]
-                        const p = participants.find((pp) => pp.name === s.to)
-                        return (
-                          <div key={i} className={`rounded-xl border overflow-hidden transition ${isSettled ? 'bg-gray-bg/50 border-border opacity-60' : 'bg-white border-border'}`}>
-                            <div className="p-3">
-                              {/* From → To 左右配置 */}
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="text-center flex-1">
-                                  <div className="text-xs text-sub">支払う人</div>
-                                  <div className="text-sm font-bold">{s.from}</div>
+
+                      {/* グループ内の精算カード */}
+                      <div className="space-y-2 pl-2">
+                        {group.settlements.map((s, i) => {
+                          const isSettled = s.isSettled
+                          return (
+                            <div key={`${s.from}-${s.to}`} className={`rounded-xl border overflow-hidden transition ${isSettled ? 'bg-gray-bg/50 border-border opacity-60' : 'bg-white border-border hover:border-green'}`}>
+                              <div className="p-3">
+                                {/* 金額を一番大きく（A-3） */}
+                                <div className="flex items-center justify-between gap-3 mb-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-[10px] text-sub">支払う人</div>
+                                    <div className="text-sm font-bold truncate">{s.from}</div>
+                                  </div>
+                                  <div className={`font-inter text-xl font-extrabold shrink-0 ${isSettled ? 'text-sub line-through' : 'text-green-dark'}`}>
+                                    ¥{s.amount.toLocaleString()}
+                                  </div>
                                 </div>
-                                <div className="text-sub text-lg px-2">➔</div>
-                                <div className="text-center flex-1">
-                                  <div className="text-xs text-sub">受け取る人</div>
-                                  <div className="text-sm font-bold">{s.to}</div>
-                                </div>
-                              </div>
-                              {/* 金額 */}
-                              <div className={`font-inter text-center text-xl font-extrabold mb-1 ${isSettled ? 'text-sub line-through' : 'text-green'}`}>
-                                ¥{s.amount.toLocaleString()}
-                              </div>
-                              {/* 支払い方法 + PayPay送金UI */}
-                              <div className="text-center text-xs text-sub">
-                                {p?.payment_method === 'paypay' && p.paypay_phone ? `PayPay: ${p.paypay_phone}` : p?.payment_method === 'bank' ? '🏦 振込' : '💴 現金'}
+
+                                {/* 幹事向けPayPay送金アクション（未精算のみ） */}
+                                {payeeParticipant?.payment_method === 'paypay' && payeeParticipant.paypay_phone && !isSettled && (
+                                  <div className="bg-gray-bg rounded-xl p-2.5">
+                                    <div className="flex items-center gap-1.5 text-[11px] text-sub mb-1.5">
+                                      <img src="/app/img/paypay.jpg" alt="" width={12} height={12} className="rounded" />
+                                      <span>PayPay:</span>
+                                      <span className="font-inter font-semibold text-[#1A1A1A]">{payeeParticipant.paypay_phone}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <button
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(payeeParticipant.paypay_phone!)
+                                          const el = document.getElementById(`mng-copy-${group.payeeName}-${i}`)
+                                          if (el) { el.textContent = 'コピー済み ✓'; setTimeout(() => { el.textContent = '番号をコピー' }, 2000) }
+                                        }}
+                                        className="flex-1 py-2 bg-green text-white text-[11px] font-bold rounded-lg hover:bg-green-dark transition text-center"
+                                      >
+                                        <span id={`mng-copy-${group.payeeName}-${i}`}>番号をコピー</span>
+                                      </button>
+                                      <span className="text-sub text-[10px]">▶</span>
+                                      <a
+                                        href="paypay://"
+                                        onClick={() => { navigator.clipboard.writeText(payeeParticipant.paypay_phone!) }}
+                                        className="flex-1 py-2 bg-[#FF0033] text-white text-[11px] font-bold rounded-lg hover:brightness-90 transition text-center no-underline"
+                                      >
+                                        PayPayで送金
+                                      </a>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* 現金・振込の場合 */}
+                                {(!payeeParticipant || payeeParticipant.payment_method !== 'paypay' || !payeeParticipant.paypay_phone) && !isSettled && (
+                                  <div className="text-[11px] text-sub text-center py-1">
+                                    {payeeParticipant?.payment_method === 'bank' ? '🏦 振込で受取' : '💴 現金で受取'}
+                                  </div>
+                                )}
                               </div>
 
-                              {/* 幹事向けPayPay送金アクション（PayPayユーザー・未精算のみ） */}
-                              {p?.payment_method === 'paypay' && p.paypay_phone && !isSettled && (
-                                <div className="mt-3 bg-gray-bg rounded-xl p-3">
-                                  <div className="flex items-center gap-1.5 text-xs text-sub mb-2">
-                                    <img src="/app/img/paypay.jpg" alt="" width={14} height={14} className="rounded" />
-                                    PayPay番号: <span className="font-inter font-semibold text-[#1A1A1A]">{p.paypay_phone}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(p.paypay_phone!)
-                                        const el = document.getElementById(`manage-copy-${i}`)
-                                        if (el) { el.textContent = 'コピー済み ✓'; setTimeout(() => { el.textContent = '番号をコピー' }, 2000) }
-                                      }}
-                                      className="flex-1 py-2.5 bg-green text-white text-xs font-bold rounded-lg hover:bg-green-dark transition text-center"
-                                    >
-                                      <span id={`manage-copy-${i}`}>番号をコピー</span>
-                                    </button>
-                                    <span className="text-sub text-xs">▶</span>
-                                    <a
-                                      href="paypay://"
-                                      onClick={() => { navigator.clipboard.writeText(p.paypay_phone!) }}
-                                      className="flex-1 py-2.5 bg-[#FF0033] text-white text-xs font-bold rounded-lg hover:brightness-90 transition text-center no-underline"
-                                    >
-                                      PayPayで送金
-                                    </a>
-                                  </div>
-                                </div>
-                              )}
+                              {/* 完了トグル */}
+                              <button
+                                onClick={() => handleToggleSettled(s.from, s.to, s.amount)}
+                                className={`w-full py-2.5 text-sm font-bold border-t transition ${isSettled ? 'bg-gray-bg text-sub border-border' : 'bg-green text-white border-green hover:bg-green-dark'}`}
+                              >
+                                {isSettled ? '✓ 精算済み（タップで戻す）' : '精算完了にする'}
+                              </button>
                             </div>
-                            {/* 完了トグル */}
-                            <button
-                              onClick={() => handleToggleSettled(s.from, s.to, s.amount)}
-                              className={`w-full min-w-[60px] py-2.5 text-sm font-bold border-t transition ${isSettled ? 'bg-gray-bg text-sub border-border' : 'bg-green text-white border-green hover:bg-green-dark'}`}
-                            >
-                              {isSettled ? '✓ 精算済み' : '精算完了にする'}
-                            </button>
-                          </div>
-                        )
-                      })}
+                          )
+                        })}
+                      </div>
                     </div>
                   )
-                })()}
+                })}
+
+                {/* 完了グループを表示/非表示 */}
+                {!settlementStats.allSettled && groupedByPayee.some((g) => g.allSettled) && (
+                  <button
+                    onClick={() => setShowCompleted(!showCompleted)}
+                    className="w-full mt-2 py-2 text-xs text-sub hover:text-green transition"
+                  >
+                    {showCompleted ? '▲ 完了済みを隠す' : `▼ 完了済みを表示（${groupedByPayee.filter((g) => g.allSettled).length}グループ）`}
+                  </button>
+                )}
               </div>
             )}
           </>
