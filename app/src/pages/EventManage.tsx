@@ -403,6 +403,11 @@ export default function EventManage() {
     const key = `${fromName}-${toName}`
     const newVal = !settledMap[key]
     setSettledMap((prev) => ({ ...prev, [key]: newVal }))
+    // 未精算に戻す操作のとき、自動アーカイブ済みなら active に復帰させてステータスを整合させる
+    if (!newVal && event?.status === 'archived') {
+      await updateEvent(id, { status: 'active' })
+      setEvent((prev) => prev ? { ...prev, status: 'active' } : prev)
+    }
     await upsertSettlement(id, fromName, toName, amount, newVal)
   }
 
@@ -877,7 +882,29 @@ export default function EventManage() {
 
                 {/* ========== 受取人グループ表示（B-2 + A-2 + A-3） ========== */}
                 {groupedByPayee.map((group) => {
-                  const payeeParticipant = participants.find((pp) => pp.name === group.payeeName)
+                  // 厳密一致 → trim/空白除去の順でフォールバックマッチ
+                  const payeeParticipant =
+                    participants.find((pp) => pp.name === group.payeeName) ||
+                    participants.find((pp) => pp.name.trim() === group.payeeName.trim()) ||
+                    participants.find((pp) => pp.name.replace(/\s+/g, '') === group.payeeName.replace(/\s+/g, ''))
+                  // 診断ログ（DevTools Console 用）
+                  if (!payeeParticipant) {
+                    console.warn('[EventManage] 精算受取人の参加者情報が見つかりません', {
+                      payeeName: group.payeeName,
+                      payeeNameLength: group.payeeName.length,
+                      availableParticipants: participants.map((p) => ({
+                        name: p.name,
+                        nameLength: p.name.length,
+                        payment_method: p.payment_method,
+                        paypay_phone: p.paypay_phone,
+                      })),
+                    })
+                  } else if (payeeParticipant.payment_method === 'paypay' && !payeeParticipant.paypay_phone) {
+                    console.warn('[EventManage] 受取人は PayPay だが paypay_phone が空です', {
+                      name: payeeParticipant.name,
+                      paypay_phone: payeeParticipant.paypay_phone,
+                    })
+                  }
                   const isGroupArchived = group.allSettled
                   // 完了グループは折りたたみ対象、showCompletedがtrueなら表示
                   if (isGroupArchived && !showCompleted) return null
@@ -956,10 +983,31 @@ export default function EventManage() {
                                   </div>
                                 )}
 
-                                {/* 現金・振込の場合 */}
-                                {(!payeeParticipant || payeeParticipant.payment_method !== 'paypay' || !payeeParticipant.paypay_phone) && !isSettled && (
+                                {/* 参加者情報が見つからない（削除/リネーム等）— 誤フォールバック回避 */}
+                                {!payeeParticipant && !isSettled && (
+                                  <div className="text-[11px] text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5 text-center">
+                                    ⚠ 受取人 "{group.payeeName}" の参加者情報が見つかりません
+                                  </div>
+                                )}
+
+                                {/* PayPay だが番号未登録 */}
+                                {payeeParticipant?.payment_method === 'paypay' && !payeeParticipant.paypay_phone && !isSettled && (
+                                  <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 text-center">
+                                    📱 PayPayで受取（番号未登録）
+                                  </div>
+                                )}
+
+                                {/* 振込 */}
+                                {payeeParticipant?.payment_method === 'bank' && !isSettled && (
                                   <div className="text-[11px] text-sub text-center py-1">
-                                    {payeeParticipant?.payment_method === 'bank' ? '🏦 振込で受取' : '💴 現金で受取'}
+                                    🏦 振込で受取
+                                  </div>
+                                )}
+
+                                {/* 現金（cash のみ） */}
+                                {payeeParticipant?.payment_method === 'cash' && !isSettled && (
+                                  <div className="text-[11px] text-sub text-center py-1">
+                                    💴 現金で受取
                                   </div>
                                 )}
                               </div>
@@ -980,12 +1028,16 @@ export default function EventManage() {
                 })}
 
                 {/* 完了グループを表示/非表示 */}
-                {!settlementStats.allSettled && groupedByPayee.some((g) => g.allSettled) && (
+                {groupedByPayee.some((g) => g.allSettled) && (
                   <button
                     onClick={() => setShowCompleted(!showCompleted)}
                     className="w-full mt-2 py-2 text-xs text-sub hover:text-green transition"
                   >
-                    {showCompleted ? '▲ 完了済みを隠す' : `▼ 完了済みを表示（${groupedByPayee.filter((g) => g.allSettled).length}グループ）`}
+                    {showCompleted
+                      ? '▲ 完了済みを隠す'
+                      : settlementStats.allSettled
+                        ? '▼ 精算履歴を表示（戻すにはここから）'
+                        : `▼ 完了済みを表示（${groupedByPayee.filter((g) => g.allSettled).length}グループ）`}
                   </button>
                 )}
               </div>
