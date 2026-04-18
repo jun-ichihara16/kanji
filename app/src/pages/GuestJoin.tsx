@@ -786,6 +786,13 @@ export default function GuestJoin() {
         )}
 
       </div>
+
+      {/* サービスサイトへの導線（ゲスト参加者向け） */}
+      <div className="px-4 py-4 text-center border-t border-border mt-auto">
+        <a href="/" className="text-xs text-sub/70 hover:underline">
+          サービスについて
+        </a>
+      </div>
     </div>
   )
 }
