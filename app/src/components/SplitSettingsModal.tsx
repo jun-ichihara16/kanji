@@ -19,7 +19,13 @@ interface Props {
   ) => Promise<void>
 }
 
-const TAGS = ['女性', '若手/後輩', '上司/先輩', '遅刻/早退', '主役'] as const
+const TAGS = ['女性', '若手/後輩', '上司/先輩', '主役'] as const
+
+// 各モードでのタグ係数（UI 表示用 / 実計算は settle.ts の suggestSplitFromTags が正）
+const TAG_COEFFICIENTS: Record<'ai_mild' | 'ai_strict', Record<typeof TAGS[number], string>> = {
+  ai_mild:   { '女性': '×0.8', '若手/後輩': '×0.8', '上司/先輩': '×1.2', '主役': '¥0' },
+  ai_strict: { '女性': '×0.7', '若手/後輩': '×0.7', '上司/先輩': '×1.5', '主役': '¥0' },
+}
 
 type ModeTab = 'equal' | 'ai_mild' | 'ai_strict' | 'manual'
 
@@ -95,11 +101,12 @@ export default function SplitSettingsModal({
   const previewTotal = Object.values(previewShares).reduce((a, b) => a + b, 0)
   const previewMismatch = previewTotal !== totalAdvance && totalAdvance > 0
 
-  const toggleTag = (pid: string, tag: string) => {
+  // 単一選択: 同じタグをもう一度押すと解除、別タグを押すと差し替え
+  const selectTag = (pid: string, tag: string) => {
     setTagsMap((prev) => {
       const cur = prev[pid] ?? []
-      const next = cur.includes(tag) ? cur.filter((t) => t !== tag) : [...cur, tag]
-      return { ...prev, [pid]: next }
+      const isSame = cur.length === 1 && cur[0] === tag
+      return { ...prev, [pid]: isSame ? [] : [tag] }
     })
   }
 
@@ -172,9 +179,27 @@ export default function SplitSettingsModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-5">
-          {/* ========== 1. タグ付与 ========== */}
+          {/* ========== 1. タグ付与（単一選択） ========== */}
           <section>
-            <h4 className="text-sm font-bold mb-2">1. タグを付ける <span className="text-[10px] text-sub font-normal">（任意・AI提案の根拠に使います）</span></h4>
+            <h4 className="text-sm font-bold mb-2">
+              1. タグを付ける
+              <span className="text-[10px] text-sub font-normal ml-1">（任意・1人1つまで）</span>
+            </h4>
+            {/* 係数凡例: AIモードのときだけ表示 */}
+            {(tab === 'ai_mild' || tab === 'ai_strict') && (
+              <div className="bg-green-light/40 border border-green/20 rounded-lg px-2.5 py-2 mb-2">
+                <div className="text-[10px] text-sub mb-1">
+                  {tab === 'ai_mild' ? 'AI マイルドの係数' : 'AI しっかりの係数'}
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-semibold text-green-dark">
+                  {TAGS.map((t) => (
+                    <span key={t}>
+                      {t} <span className="font-inter">{TAG_COEFFICIENTS[tab][t]}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               {participants.map((p) => (
                 <div key={p.id} className="bg-gray-bg rounded-xl p-3">
@@ -182,17 +207,24 @@ export default function SplitSettingsModal({
                   <div className="flex flex-wrap gap-1.5">
                     {TAGS.map((t) => {
                       const selected = (tagsMap[p.id] ?? []).includes(t)
+                      const coef =
+                        tab === 'ai_mild' || tab === 'ai_strict'
+                          ? TAG_COEFFICIENTS[tab][t]
+                          : null
                       return (
                         <button
                           key={t}
-                          onClick={() => toggleTag(p.id, t)}
-                          className={`text-[11px] px-2.5 py-1 rounded-full border-2 font-semibold transition ${
+                          onClick={() => selectTag(p.id, t)}
+                          className={`text-[11px] px-2.5 py-1 rounded-full border-2 font-semibold transition flex items-center gap-1 ${
                             selected
                               ? 'bg-green-light border-green text-green-dark'
                               : 'bg-white border-border text-sub'
                           }`}
                         >
-                          {t}
+                          <span>{t}</span>
+                          {coef && (
+                            <span className="font-inter text-[10px] opacity-70">{coef}</span>
+                          )}
                         </button>
                       )
                     })}

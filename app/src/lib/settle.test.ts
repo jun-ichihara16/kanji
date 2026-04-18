@@ -156,6 +156,22 @@ describe('allocateShares', () => {
     const shares = allocateShares(0, profiles)
     expect(shares.A).toBe(0)
   })
+
+  it('回帰: Supabase numeric が文字列で返ってきても weight が効く', () => {
+    // PostgREST は numeric を文字列で返すことがあり、string + number 結合で
+    // weightSum が壊れる → 全員 NaN になる既存バグの回帰テスト
+    const profiles = [
+      { name: 'A', weight: '1.5' as unknown as number, fixed_amount: null },
+      { name: 'B', weight: '1.0' as unknown as number, fixed_amount: null },
+      { name: 'C', weight: '0.5' as unknown as number, fixed_amount: null },
+    ]
+    const shares = allocateShares(10000, profiles)
+    const total = Object.values(shares).reduce((a, b) => a + b, 0)
+    expect(total).toBe(10000)
+    expect(Number.isFinite(shares.A)).toBe(true)
+    expect(shares.A).toBeGreaterThan(shares.B)
+    expect(shares.B).toBeGreaterThan(shares.C)
+  })
 })
 
 // =========================================
@@ -255,11 +271,6 @@ describe('suggestSplitFromTags', () => {
     expect(r.weight).toBe(1.2)
   })
 
-  it('マイルド: 遅刻/早退 → 0.5', () => {
-    const r = suggestSplitFromTags(['遅刻/早退'], 'ai_mild')
-    expect(r.weight).toBe(0.5)
-  })
-
   it('しっかり: 女性 → 0.7', () => {
     const r = suggestSplitFromTags(['女性'], 'ai_strict')
     expect(r.weight).toBe(0.7)
@@ -268,11 +279,6 @@ describe('suggestSplitFromTags', () => {
   it('しっかり: 上司/先輩 → 1.5', () => {
     const r = suggestSplitFromTags(['上司/先輩'], 'ai_strict')
     expect(r.weight).toBe(1.5)
-  })
-
-  it('しっかり: 遅刻/早退 → 0.3', () => {
-    const r = suggestSplitFromTags(['遅刻/早退'], 'ai_strict')
-    expect(r.weight).toBe(0.3)
   })
 
   it('主役は他タグ不問で fixed_amount=0', () => {
@@ -285,11 +291,6 @@ describe('suggestSplitFromTags', () => {
     const r = suggestSplitFromTags([], 'ai_mild')
     expect(r.weight).toBe(1.0)
     expect(r.fixed_amount).toBeNull()
-  })
-
-  it('複数タグ: マイルドで女性+遅刻 → 0.8 * 0.5 = 0.4', () => {
-    const r = suggestSplitFromTags(['女性', '遅刻/早退'], 'ai_mild')
-    expect(r.weight).toBeCloseTo(0.4, 2)
   })
 })
 

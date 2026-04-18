@@ -76,6 +76,23 @@ async function callAdminApi(body: Record<string, unknown>) {
   return res.json()
 }
 
+// Supabase (PostgREST) は numeric カラムを文字列で返すことがあるため、
+// weight を必ず number に正規化する。fixed_amount は integer なので OK。
+function normalizeParticipant<T extends { weight?: unknown }>(p: T): T {
+  if (p == null) return p
+  const w = (p as { weight?: unknown }).weight
+  if (w != null && typeof w !== 'number') {
+    const n = Number(w)
+    ;(p as { weight: number }).weight = Number.isFinite(n) ? n : 1.0
+  }
+  return p
+}
+
+function normalizeParticipants<T extends { weight?: unknown }>(list: T[] | null | undefined): T[] | null {
+  if (!list) return (list ?? null) as T[] | null
+  return list.map(normalizeParticipant)
+}
+
 export function useEvent() {
   async function fetchMyEvents(userId: string) {
     const { data, error } = await supabase
@@ -142,7 +159,7 @@ export function useEvent() {
       .select('*')
       .eq('event_id', eventId)
       .order('created_at', { ascending: true })
-    return { data: data as Participant[] | null, error }
+    return { data: normalizeParticipants(data as Participant[] | null), error }
   }
 
   async function addParticipant(eventId: string, participant: {
@@ -155,7 +172,10 @@ export function useEvent() {
       .insert({ event_id: eventId, ...participant })
       .select()
       .single()
-    return { data: data as Participant | null, error }
+    return {
+      data: data ? normalizeParticipant(data as Participant) : null,
+      error,
+    }
   }
 
   async function updateParticipantName(id: string, name: string) {
@@ -316,7 +336,10 @@ export function useEvent() {
     fetchAllUsers: async () => supabase.from('users').select('*').order('created_at', { ascending: false }),
     fetchAllEvents: async () => supabase.from('events').select('*').order('created_at', { ascending: false }),
     fetchAllAdvances: async () => supabase.from('advances').select('*'),
-    fetchAllParticipants: async () => supabase.from('participants').select('*'),
+    fetchAllParticipants: async () => {
+      const res = await supabase.from('participants').select('*')
+      return { ...res, data: normalizeParticipants(res.data as Participant[] | null) }
+    },
     // contacts: RLS強化後はanon keyでSELECT不可 → Edge Function経由
     fetchAllContacts: async (userId: string) => {
       const res = await callAdminApi({ action: 'fetchContacts', userId })

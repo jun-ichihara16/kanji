@@ -118,6 +118,12 @@ export default function EventManage() {
       }, (payload: any) => {
         const updated = payload.new as Participant | undefined
         if (updated) {
+          // Realtime の payload では numeric(weight) が文字列で来ることがあるので数値化
+          const w = (updated as { weight?: unknown }).weight
+          if (w != null && typeof w !== 'number') {
+            const n = Number(w)
+            ;(updated as { weight: number }).weight = Number.isFinite(n) ? n : 1.0
+          }
           setParticipants((prev) =>
             prev.map((p) => p.id === updated.id ? { ...p, ...updated } : p)
           )

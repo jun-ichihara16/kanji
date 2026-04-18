@@ -40,11 +40,22 @@ export function allocateShares(
     return shares
   }
 
+  // 0. weight/fixed_amount を number に正規化（Supabase numeric が文字列で返るケースの保険）
+  const safe: SplitProfile[] = profiles.map((p) => {
+    const w = typeof p.weight === 'number' ? p.weight : Number(p.weight)
+    const fa = p.fixed_amount
+    return {
+      name: p.name,
+      weight: Number.isFinite(w) ? w : 0,
+      fixed_amount: fa == null ? null : (typeof fa === 'number' ? fa : Number(fa)),
+    }
+  })
+
   // 1. fixed_amount を先に確保
   let fixedTotal = 0
   const flexible: SplitProfile[] = []
-  for (const p of profiles) {
-    if (p.fixed_amount != null) {
+  for (const p of safe) {
+    if (p.fixed_amount != null && Number.isFinite(p.fixed_amount)) {
       shares[p.name] = Math.max(0, Math.floor(p.fixed_amount))
       fixedTotal += shares[p.name]
     } else {
@@ -211,8 +222,7 @@ export function calculateSettlements(
 
 /**
  * タグ配列を受け取り、指定モードでの推奨 weight / fixed_amount を返す。
- * 複数タグが付いた場合は「最も強い補正」を優先して適用する
- * （主役＞遅刻早退＞女性/若手＞上司 の順でpriorityを決める）。
+ * 主役は最優先で fixed_amount=0。それ以外のタグは weight 係数を掛け合わせる。
  */
 export function suggestSplitFromTags(
   tags: string[],
@@ -225,13 +235,11 @@ export function suggestSplitFromTags(
 
   const preset = mode === 'ai_strict'
     ? {
-        '遅刻/早退': 0.3,
         '女性':       0.7,
         '若手/後輩':  0.7,
         '上司/先輩':  1.5,
       }
     : {
-        '遅刻/早退': 0.5,
         '女性':       0.8,
         '若手/後輩':  0.8,
         '上司/先輩':  1.2,
