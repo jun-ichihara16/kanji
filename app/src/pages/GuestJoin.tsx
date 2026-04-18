@@ -5,6 +5,7 @@ import { useEvent, Event, Participant, AdvanceRecord, SettlementRecord } from '.
 import { calculateSettlements, Advance } from '../lib/settle'
 import { supabase } from '../lib/supabase'
 import { shareOrCopy, buildSettlementShareText, buildPaypayRequestText, buildEventPublicUrl, isValidPaypayLink } from '../lib/share'
+import { loginWithLINE } from '../lib/auth'
 
 export default function GuestJoin() {
   const { slug } = useParams<{ slug: string }>()
@@ -86,7 +87,27 @@ export default function GuestJoin() {
         fetchAdvances(ev.id),
         fetchSettlements(ev.id),
       ])
-      if (partRes.data) setParticipants(partRes.data)
+      let currentParticipants = partRes.data || []
+
+      // LINEログイン済みユーザーなら、まだ参加者に居ない場合のみ自動追加
+      if (user?.id && !currentParticipants.some((p) => p.user_id === user.id)) {
+        const { data: newP } = await addParticipant(ev.id, {
+          name: user.displayName,
+          payment_method: 'paypay',
+          user_id: user.id,
+        })
+        if (newP) {
+          currentParticipants = [...currentParticipants, newP]
+          // 簡易認証トークンにも追加（削除・編集権限のため）
+          const newIds = [...myParticipantIds, newP.id]
+          setMyParticipantIds(newIds)
+          setMyName(user.displayName)
+          localStorage.setItem(`kanji_my_pids_${slug}`, JSON.stringify(newIds))
+          localStorage.setItem(`kanji_my_name_${slug}`, user.displayName)
+        }
+      }
+
+      setParticipants(currentParticipants)
       if (advRes.data) setAdvances(advRes.data)
       if (settRes.data) {
         const map: Record<string, boolean> = {}
@@ -95,7 +116,7 @@ export default function GuestJoin() {
       }
       setLoading(false)
     })
-  }, [slug])
+  }, [slug, user?.id])
 
   const handleJoin = async () => {
     if (!event || !joinName.trim()) return
@@ -386,7 +407,30 @@ export default function GuestJoin() {
             )}
 
             {/* 参加登録 */}
-            <h3 className="text-sm font-bold mb-2">参加する</h3>
+            {!user && (
+              <>
+                <h3 className="text-sm font-bold mb-2">参加する</h3>
+                <button
+                  onClick={() => {
+                    // ログイン後に同じイベントページへ戻るための slug を保存
+                    sessionStorage.setItem('kanji_guest_return_slug', slug || '')
+                    loginWithLINE()
+                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-line text-white font-bold py-3.5 rounded-xl mb-2 hover:brightness-95 transition"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596a.626.626 0 01-.199.031c-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.271.173-.508.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+                  LINEでログインして参加
+                </button>
+                <div className="flex items-center gap-3 my-3 text-[11px] text-sub">
+                  <div className="flex-1 h-px bg-border" />
+                  <span>または名前を入力して参加</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              </>
+            )}
+            {user && (
+              <h3 className="text-sm font-bold mb-2">別の名義でも参加を追加できます</h3>
+            )}
             <div className="bg-white border border-border rounded-2xl p-4">
               <div className="space-y-2 mb-3">
                 <input

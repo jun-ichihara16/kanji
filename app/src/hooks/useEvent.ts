@@ -20,6 +20,7 @@ export interface Event {
 export interface Participant {
   id: string
   event_id: string
+  user_id: string | null
   name: string
   payment_method: string
   paypay_phone: string | null
@@ -139,6 +140,7 @@ export function useEvent() {
     paypay_phone?: string
     paypay_link_url?: string
     paypay_link_type?: 'amount_free'
+    user_id?: string
   }) {
     const { data, error } = await supabase
       .from('participants')

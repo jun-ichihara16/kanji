@@ -68,6 +68,13 @@ export default function AuthCallback() {
           setLocalUser(data.user)
           setStatus('ログイン成功！')
           console.log('[AuthCallback] User saved, redirecting...')
+          // ゲスト参加URLから来た場合はそのイベントページへ戻す
+          const returnSlug = sessionStorage.getItem('kanji_guest_return_slug')
+          if (returnSlug) {
+            sessionStorage.removeItem('kanji_guest_return_slug')
+            window.location.href = `/app/e/${returnSlug}`
+            return
+          }
           // 初回ログイン（onboardingCompleted未設定）→ オンボーディングへ
           if (!data.user.onboardingCompleted) {
             window.location.href = '/app/onboarding'

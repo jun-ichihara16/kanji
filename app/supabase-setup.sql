@@ -32,6 +32,7 @@ create table if not exists events (
 create table if not exists participants (
   id uuid primary key default gen_random_uuid(),
   event_id uuid references events(id) on delete cascade,
+  user_id uuid references users(id) on delete set null,
   name text not null,
   payment_method text not null,
   paypay_phone text,
@@ -44,6 +45,11 @@ create table if not exists participants (
     or paypay_link_url ~ '^https://(pay|qr)\.paypay\.ne\.jp/'
   )
 );
+
+-- 同一ユーザーが同じイベントに二重追加されないよう部分UNIQUE
+create unique index if not exists idx_participants_user_event
+  on participants(event_id, user_id)
+  where user_id is not null;
 
 -- 立替記録
 create table if not exists advances (

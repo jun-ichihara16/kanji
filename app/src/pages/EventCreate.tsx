@@ -5,7 +5,7 @@ import { useEvent } from '../hooks/useEvent'
 
 export default function EventCreate() {
   const { user } = useAuth()
-  const { createEvent } = useEvent()
+  const { createEvent, addParticipant } = useEvent()
   const navigate = useNavigate()
 
   const [step, setStep] = useState(1)
@@ -38,6 +38,12 @@ export default function EventCreate() {
       return
     }
     if (data) {
+      // 幹事本人を自動で参加者リストに追加（LINE表示名・PayPay選択・情報未登録）
+      await addParticipant(data.id, {
+        name: user.displayName,
+        payment_method: 'paypay',
+        user_id: user.id,
+      })
       setCreatedSlug(data.slug)
       setCreatedId(data.id)
       setStep(2)
