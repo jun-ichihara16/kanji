@@ -250,7 +250,8 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {eventFilter === 'active' && (
+                {/* 下部CTA: 空状態カード内のCTAと重複しないよう、1件以上あるときだけ表示 */}
+                {eventFilter === 'active' && filteredEvents.length > 0 && (
                   <Link
                     to="/events/new"
                     className="flex items-center justify-center gap-1.5 w-full py-4 bg-green text-white font-bold rounded-xl hover:bg-green-dark transition"
