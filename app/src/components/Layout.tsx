@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { signOut } from '../lib/auth'
 import FeedbackWidget from './FeedbackWidget'
@@ -11,10 +10,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="w-full max-w-[390px] min-h-screen bg-white shadow-[0_0_40px_rgba(0,0,0,0.08)] flex flex-col relative">
         {/* Header */}
         <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-white sticky top-0 z-50">
-          <Link to="/" className="flex items-center gap-1.5 text-xl font-extrabold text-green">
+          {/*
+            basename="/app" のため Link だとアプリ内に留まる。
+            LP (サービスサイト) に抜ける動線として a タグで絶対パスを使う。
+          */}
+          <a href="/" className="flex items-center gap-1.5 text-xl font-extrabold text-green">
             <img src="/app/img/kanji_logo.png" alt="" width={26} height={26} />
             AI KANJI
-          </Link>
+          </a>
           {isLoggedIn ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-sub">{displayName}</span>
