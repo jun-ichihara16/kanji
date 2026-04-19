@@ -68,8 +68,8 @@ export default function Home() {
         ))}
       </div>
 
-      {/* 立替・精算 */}
-      <div className="grid grid-cols-2 gap-2 px-4 pb-6">
+      {/* 立替・精算・AI傾斜 */}
+      <div className="grid grid-cols-3 gap-2 px-4 pb-6">
         <div className="text-center py-4 px-2 bg-green-light rounded-xl border border-green/20">
           <img src="/app/img/icons/icon_tatekae.png" alt="立替登録" className="w-12 h-12 mx-auto mb-2" />
           <span className="text-xs font-semibold text-green-dark">立替登録</span>
@@ -77,6 +77,10 @@ export default function Home() {
         <div className="text-center py-4 px-2 bg-green-light rounded-xl border border-green/20">
           <img src="/app/img/icons/icon_seisan.png" alt="自動精算" className="w-12 h-12 mx-auto mb-2" />
           <span className="text-xs font-semibold text-green-dark">自動精算</span>
+        </div>
+        <div className="text-center py-4 px-2 bg-green-light rounded-xl border border-green/20">
+          <img src="/app/img/icons/icon_keisha.svg" alt="AI傾斜設定" className="w-12 h-12 mx-auto mb-2" />
+          <span className="text-xs font-semibold text-green-dark">AI傾斜設定</span>
         </div>
       </div>
 
