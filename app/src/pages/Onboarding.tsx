@@ -207,6 +207,15 @@ export default function Onboarding() {
           </div>
         )}
       </div>
+
+      {/* サービスサイトへの導線（完了画面では非表示） */}
+      {step !== 'complete' && (
+        <div className="px-4 pb-5 text-center">
+          <a href="/" className="text-xs text-sub/70 hover:underline">
+            サービスについて
+          </a>
+        </div>
+      )}
     </div>
   )
 }

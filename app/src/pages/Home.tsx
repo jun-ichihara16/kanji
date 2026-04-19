@@ -117,7 +117,9 @@ export default function Home() {
         </p>
 
         {/* Footer Links */}
-        <div className="flex justify-center gap-4 text-xs text-sub/70">
+        <div className="flex justify-center flex-wrap gap-x-4 gap-y-1 text-xs text-sub/70">
+          <a href="/" className="hover:underline">サービスについて</a>
+          <span>|</span>
           <a href="/terms.html" className="hover:underline">利用規約</a>
           <span>|</span>
           <a href="/privacy.html" className="hover:underline">プライバシーポリシー</a>

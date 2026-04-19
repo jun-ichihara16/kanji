@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useEvent, Event, Participant, AdvanceRecord, SettlementRecord } from '../hooks/useEvent'
-import { calculateSettlements, Advance } from '../lib/settle'
+import { calculateSettlements, Advance, SplitProfile, allocateShares } from '../lib/settle'
 import { supabase } from '../lib/supabase'
 import { shareOrCopy, buildSettlementShareText, buildPaypayRequestText, buildEventPublicUrl, isValidPaypayLink } from '../lib/share'
 import { loginWithLINE } from '../lib/auth'
@@ -59,6 +59,15 @@ export default function GuestJoin() {
 
   const participantNames = useMemo(() => participants.map((p) => p.name), [participants])
 
+  // 傾斜機能: 参加者ごとの weight/fixed_amount を取得
+  const profiles = useMemo<SplitProfile[]>(() => {
+    return participants.map((p) => ({
+      name: p.name,
+      weight: p.weight ?? 1.0,
+      fixed_amount: p.fixed_amount ?? null,
+    }))
+  }, [participants])
+
   const settlements = useMemo(() => {
     if (advances.length === 0 || participantNames.length === 0) return []
     const advs: Advance[] = advances.map((a) => ({
@@ -67,10 +76,38 @@ export default function GuestJoin() {
       splitTarget: a.split_target as 'all' | 'specific',
       targetNames: a.target_names ?? undefined,
     }))
-    return calculateSettlements(advs, participantNames)
-  }, [advances, participantNames])
+    return calculateSettlements(advs, participantNames, profiles)
+  }, [advances, participantNames, profiles])
 
   const totalAmount = useMemo(() => advances.reduce((sum, a) => sum + a.amount, 0), [advances])
+
+  // 各参加者の総負担額（全立替を合算した各人の負担）
+  const shareByName = useMemo(() => {
+    if (advances.length === 0) return {} as Record<string, number>
+    const totals: Record<string, number> = {}
+    for (const name of participantNames) totals[name] = 0
+    for (const adv of advances) {
+      const targets = adv.split_target === 'all'
+        ? participantNames
+        : (adv.target_names ?? [])
+      const targetProfiles = targets.map((n) =>
+        profiles.find((p) => p.name === n) ?? { name: n, weight: 1, fixed_amount: null }
+      )
+      const shares = allocateShares(adv.amount, targetProfiles)
+      for (const n of targets) totals[n] = (totals[n] ?? 0) + (shares[n] ?? 0)
+    }
+    return totals
+  }, [advances, participantNames, profiles])
+
+  // 自分の負担額
+  const myShare = useMemo(() => {
+    if (!myName) return null
+    return shareByName[myName] ?? 0
+  }, [myName, shareByName])
+
+  const splitMode = event?.split_mode ?? 'equal'
+  const isAiMode = splitMode === 'ai_mild' || splitMode === 'ai_strict'
+  const isManualMode = splitMode === 'manual'
 
   useEffect(() => {
     if (!slug) return
@@ -293,6 +330,91 @@ export default function GuestJoin() {
         {/* 情報タブ */}
         {activeSection === 'info' && (
           <>
+            {/* 自分の支払額（傾斜機能: 自分が登録済みかつ立替がある場合に表示） */}
+            {myName && myShare != null && totalAmount > 0 && (
+              <div className={`mb-4 rounded-2xl p-5 border-2 ${
+                isAiMode ? 'bg-green-light border-green' : 'bg-white border-green'
+              }`}>
+                {isAiMode && (
+                  <div className="inline-flex items-center gap-1.5 bg-green text-white text-[10px] font-bold px-2 py-1 rounded-full mb-2">
+                    <span>🤖</span>
+                    <span>AIが提案した精算比率です</span>
+                  </div>
+                )}
+                {isManualMode && (
+                  <div className="inline-flex items-center gap-1.5 bg-orange text-white text-[10px] font-bold px-2 py-1 rounded-full mb-2">
+                    <span>✍️</span>
+                    <span>幹事が手動で設定した金額です</span>
+                  </div>
+                )}
+                <div className="text-xs text-sub mb-1">{myName}さんの支払額</div>
+                <div className="font-inter text-3xl font-extrabold text-green-dark">
+                  ¥{myShare.toLocaleString()}
+                </div>
+                {isAiMode && (
+                  <div className="text-[10px] text-sub mt-2">
+                    {splitMode === 'ai_mild' ? 'マイルド傾斜' : 'しっかり傾斜'}
+                    で計算されています
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 全員の負担内訳（透明性担保: 誰がいくら支払うか表示） */}
+            {totalAmount > 0 && Object.keys(shareByName).length > 0 && (
+              <div className="bg-white border border-border rounded-2xl p-4 mb-4">
+                <h3 className="text-sm font-bold mb-2 flex items-center gap-2">
+                  <span>💰</span>
+                  <span>全員の負担内訳</span>
+                  {isAiMode && (
+                    <span className="text-[10px] bg-green-light text-green-dark px-2 py-0.5 rounded-full font-semibold">
+                      🤖 AI提案
+                    </span>
+                  )}
+                </h3>
+                <p className="text-[11px] text-sub mb-3">
+                  誰がいくら支払うかを全員で共有します（透明性のため）
+                </p>
+                <div className="space-y-1">
+                  {participants.map((p) => {
+                    const amt = shareByName[p.name] ?? 0
+                    const isMe = myName === p.name
+                    return (
+                      <div
+                        key={p.id}
+                        className={`flex items-center justify-between py-2 px-2.5 rounded-lg ${
+                          isMe ? 'bg-green-light' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                            isMe ? 'bg-green text-white' : 'bg-gray-bg text-sub'
+                          }`}>
+                            {p.name.charAt(0)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className={`text-sm truncate ${isMe ? 'font-bold' : 'font-medium'}`}>
+                              {p.name}{isMe && <span className="text-[10px] text-green-dark ml-1">（あなた）</span>}
+                            </div>
+                            {p.tags && p.tags.length > 0 && (
+                              <div className="text-[9px] text-sub truncate">{p.tags.join('・')}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className={`font-inter text-sm font-bold shrink-0 ${isMe ? 'text-green-dark' : 'text-dark'}`}>
+                          ¥{amt.toLocaleString()}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <div className="flex items-center justify-between py-2 px-2.5 border-t border-border mt-1 pt-3">
+                    <span className="text-xs font-bold text-sub">合計</span>
+                    <span className="font-inter text-sm font-bold">¥{totalAmount.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* イベント詳細 */}
             <div className="bg-white border border-border rounded-2xl p-4 mb-4">
               {event.venue_name && (
@@ -808,6 +930,13 @@ export default function GuestJoin() {
           </>
         )}
 
+      </div>
+
+      {/* サービスサイトへの導線（ゲスト参加者向け） */}
+      <div className="px-4 py-4 text-center border-t border-border mt-auto">
+        <a href="/" className="text-xs text-sub/70 hover:underline">
+          サービスについて
+        </a>
       </div>
     </div>
   )

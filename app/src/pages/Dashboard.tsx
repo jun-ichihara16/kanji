@@ -1,22 +1,34 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { useEvent, Event, Participant, AdvanceRecord } from '../hooks/useEvent'
+import { useEvent, Event, Participant, AdvanceRecord, EVENT_CATEGORIES, EventCategory } from '../hooks/useEvent'
 import Venues from './Venues'
 import Profile from './Profile'
 
 type Tab = 'events' | 'venues' | 'profile'
 type EventFilter = 'active' | 'archived'
 
+const CATEGORY_EMOJI: Record<EventCategory, string> = {
+  '飲み会': '🍻',
+  'ランチ': '🍽️',
+  '旅行': '✈️',
+  '合宿': '🏕️',
+  '歓送迎会': '🎉',
+  '誕生日': '🎂',
+  'その他': '✨',
+}
+
 export default function Dashboard() {
   const { user, displayName } = useAuth()
-  const { fetchMyEvents, fetchParticipants, deleteEvent, fetchAdvancesByEventIds } = useEvent()
+  const { fetchMyEvents, fetchParticipants, deleteEvent, fetchAdvancesByEventIds, fetchSettlements } = useEvent()
   const [events, setEvents] = useState<Event[]>([])
   const [stats, setStats] = useState<Record<string, { total: number; paid: number }>>({})
   const [advanceTotals, setAdvanceTotals] = useState<Record<string, number>>({})
+  const [settlementStatus, setSettlementStatus] = useState<Record<string, { total: number; settled: number }>>({})
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('events')
   const [eventFilter, setEventFilter] = useState<EventFilter>('active')
+  const [categoryFilter, setCategoryFilter] = useState<EventCategory | 'all'>('all')
 
   useEffect(() => {
     if (!user?.id) return
@@ -43,6 +55,20 @@ export default function Dashboard() {
           })
           setAdvanceTotals(totals)
         }
+        // 精算状態取得
+        const settStatus: Record<string, { total: number; settled: number }> = {}
+        for (const ev of data) {
+          const { data: setts } = await fetchSettlements(ev.id)
+          console.log('[Dashboard] settlements for', ev.title, ':', setts?.length, 'settled:', setts?.filter((s: any) => s.is_settled).length)
+          if (setts && setts.length > 0) {
+            settStatus[ev.id] = {
+              total: setts.length,
+              settled: setts.filter((s: any) => s.is_settled).length,
+            }
+          }
+        }
+        setSettlementStatus(settStatus)
+        console.log('[Dashboard] settlementStatus:', settStatus)
       }
       setLoading(false)
     })
@@ -50,7 +76,15 @@ export default function Dashboard() {
 
   const activeEvents = events.filter((e) => (e as any).status !== 'archived')
   const archivedEvents = events.filter((e) => (e as any).status === 'archived')
-  const filteredEvents = eventFilter === 'active' ? activeEvents : archivedEvents
+  const baseEvents = eventFilter === 'active' ? activeEvents : archivedEvents
+  const filteredEvents = categoryFilter === 'all'
+    ? baseEvents
+    : baseEvents.filter((e) => e.category === categoryFilter)
+
+  // 使われているカテゴリのみ表示（未使用のチップは出さない）
+  const usedCategories = Array.from(
+    new Set(baseEvents.map((e) => e.category).filter(Boolean) as EventCategory[])
+  )
 
   return (
     <div className="flex-1 flex flex-col">
@@ -79,7 +113,7 @@ export default function Dashboard() {
                 <div className="text-sm text-sub mb-4">あなたのイベント</div>
 
                 {/* Active/Archived タブ */}
-                <div className="flex gap-1 mb-4 bg-gray-bg rounded-xl p-1">
+                <div className="flex gap-1 mb-3 bg-gray-bg rounded-xl p-1">
                   <button
                     onClick={() => setEventFilter('active')}
                     className={`flex-1 py-2 text-xs font-semibold rounded-lg transition ${eventFilter === 'active' ? 'bg-white text-[#1A1A1A] shadow-sm' : 'text-sub'}`}
@@ -93,6 +127,36 @@ export default function Dashboard() {
                     完了済み（{archivedEvents.length}）
                   </button>
                 </div>
+
+                {/* カテゴリフィルタ（使われてるカテゴリがあるときだけ表示） */}
+                {usedCategories.length > 0 && (
+                  <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 -mx-4 px-4">
+                    <button
+                      onClick={() => setCategoryFilter('all')}
+                      className={`shrink-0 text-[11px] px-3 py-1.5 rounded-full border-2 font-semibold transition ${
+                        categoryFilter === 'all'
+                          ? 'border-green bg-green-light text-green-dark'
+                          : 'border-border bg-white text-sub'
+                      }`}
+                    >
+                      すべて
+                    </button>
+                    {EVENT_CATEGORIES.filter((c) => usedCategories.includes(c)).map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setCategoryFilter(categoryFilter === c ? 'all' : c)}
+                        className={`shrink-0 text-[11px] px-3 py-1.5 rounded-full border-2 font-semibold transition flex items-center gap-1 ${
+                          categoryFilter === c
+                            ? 'border-green bg-green-light text-green-dark'
+                            : 'border-border bg-white text-sub'
+                        }`}
+                      >
+                        <span>{CATEGORY_EMOJI[c]}</span>
+                        <span>{c}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {filteredEvents.length === 0 ? (
                   eventFilter === 'archived' ? (
@@ -127,15 +191,27 @@ export default function Dashboard() {
                       return (
                         <div key={ev.id} className={`bg-white border rounded-2xl p-4 transition ${isArchived ? 'border-border opacity-60' : 'border-border hover:border-green hover:shadow-sm'}`}>
                           <Link to={`/events/${ev.id}`} className="block">
+                            {ev.category && (
+                              <div className="mb-1.5">
+                                <span className="inline-flex items-center gap-1 text-[10px] bg-green-light text-green-dark px-2 py-0.5 rounded-full font-semibold">
+                                  <span>{CATEGORY_EMOJI[ev.category]}</span>
+                                  <span>{ev.category}</span>
+                                </span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-2 mb-2">
                               <span className="font-bold flex-1 truncate">{ev.title}</span>
-                              {isArchived ? (
-                                <span className="shrink-0 text-[10px] bg-gray-bg text-sub px-2 py-0.5 rounded-full">完了</span>
-                              ) : s.total > 0 && s.paid < s.total ? (
-                                <span className="shrink-0 text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full font-bold">未収金あり</span>
-                              ) : s.total > 0 ? (
-                                <span className="shrink-0 text-[10px] bg-green-light text-green-dark border border-green/20 px-2 py-0.5 rounded-full font-bold">集金完了</span>
-                              ) : null}
+                              {(() => {
+                                const ss = settlementStatus[ev.id]
+                                if (isArchived) return <span className="shrink-0 text-[10px] bg-gray-bg text-sub px-2 py-0.5 rounded-full">完了</span>
+                                // settlementsレコードがあり、全てis_settled=trueなら精算完了
+                                if (ss && ss.total > 0 && ss.settled >= ss.total) return <span className="shrink-0 text-[10px] bg-green-light text-green-dark border border-green/20 px-2 py-0.5 rounded-full font-bold">精算完了</span>
+                                // settlementsレコードがあるが一部未精算
+                                if (ss && ss.total > 0 && ss.settled < ss.total) return <span className="shrink-0 text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full font-bold">未精算あり</span>
+                                // 立替はあるがsettlementsレコードがない（まだ精算ボタンを押していない）
+                                if (total > 0 && (!ss || ss.total === 0)) return <span className="shrink-0 text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded-full font-bold">精算待ち</span>
+                                return null
+                              })()}
                             </div>
                             <div className="flex items-center gap-1.5 text-xs text-sub mb-1">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>

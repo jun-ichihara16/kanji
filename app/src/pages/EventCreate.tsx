@@ -1,7 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { useEvent } from '../hooks/useEvent'
+import { useEvent, EVENT_CATEGORIES, EventCategory } from '../hooks/useEvent'
+
+const CATEGORY_EMOJI: Record<EventCategory, string> = {
+  '飲み会': '🍻',
+  'ランチ': '🍽️',
+  '旅行': '✈️',
+  '合宿': '🏕️',
+  '歓送迎会': '🎉',
+  '誕生日': '🎂',
+  'その他': '✨',
+}
 
 export default function EventCreate() {
   const { user } = useAuth()
@@ -10,6 +20,7 @@ export default function EventCreate() {
 
   const [step, setStep] = useState(1)
   const [title, setTitle] = useState('')
+  const [category, setCategory] = useState<EventCategory | null>(null)
   const [venueName, setVenueName] = useState('')
   const [venueAddress, setVenueAddress] = useState('')
   const [eventDate, setEventDate] = useState('')
@@ -30,6 +41,7 @@ export default function EventCreate() {
       venue_address: venueAddress || undefined,
       event_date: eventDate || undefined,
       memo: memo || undefined,
+      category: category || undefined,
     })
     setSaving(false)
     console.log('[EventCreate] result:', { data, error })
@@ -83,6 +95,26 @@ export default function EventCreate() {
                 <label className="text-xs font-semibold text-sub mb-1 block">イベント名 *</label>
                 <input value={title} onChange={(e) => setTitle(e.target.value)}
                   placeholder="例：新年会、歓迎会、合宿など" className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-sub mb-1 block">カテゴリ（任意）</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {EVENT_CATEGORIES.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCategory(category === c ? null : c)}
+                      className={`py-2 px-1 rounded-xl text-[11px] font-semibold border-2 transition flex flex-col items-center gap-0.5 ${
+                        category === c
+                          ? 'border-green bg-green-light text-green-dark'
+                          : 'border-border bg-white text-sub'
+                      }`}
+                    >
+                      <span className="text-base leading-none">{CATEGORY_EMOJI[c]}</span>
+                      <span>{c}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="text-xs font-semibold text-sub mb-1 block">お店の名前</label>

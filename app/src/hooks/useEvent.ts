@@ -1,6 +1,13 @@
 import { supabase } from '../lib/supabase'
 import { nanoid } from 'nanoid'
 
+export type SplitMode = 'equal' | 'ai_mild' | 'ai_strict' | 'manual'
+export type EventStatus = 'active' | 'archived'
+export type EventCategory = '飲み会' | 'ランチ' | '旅行' | '合宿' | '歓送迎会' | '誕生日' | 'その他'
+export const EVENT_CATEGORIES: EventCategory[] = [
+  '飲み会', 'ランチ', '旅行', '合宿', '歓送迎会', '誕生日', 'その他',
+]
+
 export interface Event {
   id: string
   slug: string
@@ -14,6 +21,9 @@ export interface Event {
   line_group_id: string | null
   reminder_enabled: boolean
   reminder_time: string | null
+  split_mode: SplitMode
+  status: EventStatus
+  category: EventCategory | null
   created_at: string
 }
 
@@ -27,6 +37,9 @@ export interface Participant {
   paypay_link_url: string | null
   paypay_link_type: 'amount_free' | null
   is_paid: boolean
+  tags: string[]
+  weight: number
+  fixed_amount: number | null
   created_at: string
 }
 
@@ -66,6 +79,23 @@ async function callAdminApi(body: Record<string, unknown>) {
   return res.json()
 }
 
+// Supabase (PostgREST) は numeric カラムを文字列で返すことがあるため、
+// weight を必ず number に正規化する。fixed_amount は integer なので OK。
+function normalizeParticipant<T extends { weight?: unknown }>(p: T): T {
+  if (p == null) return p
+  const w = (p as { weight?: unknown }).weight
+  if (w != null && typeof w !== 'number') {
+    const n = Number(w)
+    ;(p as { weight: number }).weight = Number.isFinite(n) ? n : 1.0
+  }
+  return p
+}
+
+function normalizeParticipants<T extends { weight?: unknown }>(list: T[] | null | undefined): T[] | null {
+  if (!list) return (list ?? null) as T[] | null
+  return list.map(normalizeParticipant)
+}
+
 export function useEvent() {
   async function fetchMyEvents(userId: string) {
     const { data, error } = await supabase
@@ -101,6 +131,7 @@ export function useEvent() {
     event_date?: string
     fee_per_person?: number
     memo?: string
+    category?: EventCategory
   }) {
     const slug = nanoid(12)
     const { data, error } = await supabase
@@ -120,7 +151,7 @@ export function useEvent() {
     return { error }
   }
 
-  async function updateEvent(id: string, data: { title?: string; event_date?: string; venue_name?: string; status?: string }) {
+  async function updateEvent(id: string, data: { title?: string; event_date?: string; venue_name?: string; status?: string; category?: EventCategory | null }) {
     const { error } = await supabase.from('events').update(data).eq('id', id)
     return { error }
   }
@@ -131,7 +162,7 @@ export function useEvent() {
       .select('*')
       .eq('event_id', eventId)
       .order('created_at', { ascending: true })
-    return { data: data as Participant[] | null, error }
+    return { data: normalizeParticipants(data as Participant[] | null), error }
   }
 
   async function addParticipant(eventId: string, participant: {
@@ -147,7 +178,10 @@ export function useEvent() {
       .insert({ event_id: eventId, ...participant })
       .select()
       .single()
-    return { data: data as Participant | null, error }
+    return {
+      data: data ? normalizeParticipant(data as Participant) : null,
+      error,
+    }
   }
 
   async function updateParticipantName(id: string, name: string) {
@@ -171,6 +205,28 @@ export function useEvent() {
       .from('participants')
       .update({ is_paid: isPaid })
       .eq('id', id)
+    return { error }
+  }
+
+  // 傾斜機能: 参加者の tags / weight / fixed_amount を更新
+  async function updateParticipantSplit(id: string, patch: {
+    tags?: string[]
+    weight?: number
+    fixed_amount?: number | null
+  }) {
+    const { error } = await supabase
+      .from('participants')
+      .update(patch)
+      .eq('id', id)
+    return { error }
+  }
+
+  // 傾斜機能: イベントの split_mode を更新
+  async function updateSplitMode(eventId: string, mode: SplitMode) {
+    const { error } = await supabase
+      .from('events')
+      .update({ split_mode: mode })
+      .eq('id', eventId)
     return { error }
   }
 
@@ -272,6 +328,8 @@ export function useEvent() {
     updateParticipantName,
     deleteParticipant,
     togglePaid,
+    updateParticipantSplit,
+    updateSplitMode,
     fetchAdvances,
     fetchAdvancesByEventIds,
     addAdvance,
@@ -284,7 +342,10 @@ export function useEvent() {
     fetchAllUsers: async () => supabase.from('users').select('*').order('created_at', { ascending: false }),
     fetchAllEvents: async () => supabase.from('events').select('*').order('created_at', { ascending: false }),
     fetchAllAdvances: async () => supabase.from('advances').select('*'),
-    fetchAllParticipants: async () => supabase.from('participants').select('*'),
+    fetchAllParticipants: async () => {
+      const res = await supabase.from('participants').select('*')
+      return { ...res, data: normalizeParticipants(res.data as Participant[] | null) }
+    },
     // contacts: RLS強化後はanon keyでSELECT不可 → Edge Function経由
     fetchAllContacts: async (userId: string) => {
       const res = await callAdminApi({ action: 'fetchContacts', userId })
