@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none">
+  <!-- AIスパークル（左上） -->
+  <path d="M10 4 L10.7 5.8 L12.5 6.5 L10.7 7.2 L10 9 L9.3 7.2 L7.5 6.5 L9.3 5.8 Z" fill="#16A34A"/>
+  <path d="M14 2 L14.35 2.9 L15.25 3.25 L14.35 3.6 L14 4.5 L13.65 3.6 L12.75 3.25 L13.65 2.9 Z" fill="#16A34A"/>
+
+  <!-- スライダー1（低） -->
+  <rect x="7" y="16" width="6" height="26" rx="3" fill="#BBF7D0"/>
+  <circle cx="10" cy="34" r="4" fill="#16A34A"/>
+  <circle cx="10" cy="34" r="1.5" fill="#FFFFFF"/>
+
+  <!-- スライダー2（中） -->
+  <rect x="21" y="16" width="6" height="26" rx="3" fill="#BBF7D0"/>
+  <circle cx="24" cy="26" r="4" fill="#22C55E"/>
+  <circle cx="24" cy="26" r="1.5" fill="#FFFFFF"/>
+
+  <!-- スライダー3（高） -->
+  <rect x="35" y="16" width="6" height="26" rx="3" fill="#BBF7D0"/>
+  <circle cx="38" cy="20" r="4" fill="#16A34A"/>
+  <circle cx="38" cy="20" r="1.5" fill="#FFFFFF"/>
+</svg>
