@@ -328,9 +328,27 @@ p{color:var(--body)}
 
 @media (max-width:768px){
   .hero{padding:56px 0 64px}
-  .hero-screens{gap:32px;margin-top:8px}
-  .screen-card{width:200px}
-  .hero-microcopy{margin-bottom:48px;gap:12px}
+  .hero-microcopy{margin-bottom:40px;gap:12px}
+  .hero-screens{
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:visible;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    gap:16px;
+    padding:8px 20px 16px;
+    margin:0 -20px;
+    justify-content:flex-start;
+  }
+  .hero-screens::-webkit-scrollbar{display:none}
+  .hero-screens .screen-card{
+    width:180px;
+    animation:none;
+    scroll-snap-align:center;
+  }
+  .screen-caption h3{font-size:14px}
+  .screen-caption p{font-size:11px}
 }
 
 /* ===== Section Head ===== */
