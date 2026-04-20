@@ -619,6 +619,13 @@ footer{background:var(--bg-gray);padding:48px 0 28px}
 .fade-in.delay-2{transition-delay:.16s}
 .fade-in.delay-3{transition-delay:.24s}
 
+/* SP/PC 切り替え改行ヘルパー */
+.sp-br{display:none}
+@media (max-width:768px){
+  .sp-br{display:inline}
+  .pc-br{display:none}
+}
+
 /* Respect reduced-motion */
 @media (prefers-reduced-motion:reduce){
   .fade-in{opacity:1;transform:none;transition:none}
@@ -655,8 +662,8 @@ footer{background:var(--bg-gray);padding:48px 0 28px}
   <div class="container">
     <div class="hero-badge">β版公開中・完全無料</div>
     <h1>
-      幹事をやって「なんか、疲れた」から<br>
-      「<span class="accent">またやりたいな</span>」に変える。
+      幹事をやって<br class="sp-br">「なんか、疲れた」から<br>
+      「<span class="accent">またやりたいな</span>」に<br class="sp-br">変える。
     </h1>
     <p class="lead">割り勘計算・PayPay集金・傾斜配分・リマインドをLINEで全自動化。幹事をやるほどポイントも貯まる、新しい幹事アプリ。</p>
     <div class="hero-cta">
