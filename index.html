@@ -290,30 +290,10 @@ p{color:var(--body)}
 .hero-microcopy span{display:inline-flex;align-items:center;gap:4px}
 .hero-microcopy span::before{content:"";display:inline-block;width:15px;height:15px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322C55E' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");background-size:contain;background-repeat:no-repeat}
 
-/* Hero illustration */
-.hero-illust{
-  max-width:760px;
-  margin:8px auto 0;
-  padding:0 8px;
-}
-.hero-illust img{
-  width:100%;
-  height:auto;
-  display:block;
-}
-
-/* Float animation (subtle) */
-@keyframes heroFloat{
-  0%,100%{transform:translateY(0)}
-  50%{transform:translateY(-4px)}
-}
-.hero-illust img{animation:heroFloat 5s ease-in-out infinite}
-
 @media (max-width:768px){
   .hero{padding:56px 0 64px}
   .hero h1{font-size:23px;line-height:1.5}
   .hero-microcopy{margin-bottom:24px;gap:12px}
-  .hero-illust{max-width:420px;margin-top:4px}
 }
 
 /* ===== Section Head ===== */
@@ -651,9 +631,6 @@ footer{background:var(--bg-gray);padding:48px 0 28px}
       幹事をやって<br class="sp-br">「なんか、疲れた」から<br>
       「<span class="accent">またやりたいな</span>」に変える。
     </h1>
-    <div class="hero-illust">
-      <img src="05_img/hero-illust.png" alt="スマホをタップするだけで集金・リマインド・割り勘計算が自動で完了するイメージ" width="1376" height="768" fetchpriority="high" decoding="async">
-    </div>
     <div class="hero-sub">
       <p class="hero-sub-main">幹事の面倒な仕事を、LINEで全自動化。</p>
       <p class="hero-sub-features">立替計算・AI傾斜設定・集金リマインド</p>
