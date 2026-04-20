@@ -248,27 +248,47 @@ p{color:var(--body)}
   border-radius:9999px;
   margin-bottom:28px;
 }
-.hero h1{margin-bottom:24px;color:var(--text)}
+.hero h1{margin-bottom:28px;color:var(--text)}
 .hero h1 .accent{color:var(--green)}
-.hero .lead{
-  max-width:600px;
-  margin:0 auto 32px;
-  font-size:15px;
-  color:var(--body);
+.hero-sub{max-width:600px;margin:28px auto 0}
+.hero-sub-main{
+  font-size:17px;
+  font-weight:700;
+  color:var(--text);
+  line-height:1.6;
+  margin-bottom:6px;
 }
-.hero-cta{margin-bottom:16px}
+.hero-sub-features{
+  font-size:13px;
+  color:var(--sub);
+  line-height:1.6;
+}
+.hero-sub-emotion{
+  max-width:600px;
+  margin:20px auto 0;
+  font-size:14px;
+  color:var(--body);
+  line-height:1.7;
+}
+.hero-premicro{
+  margin-top:28px;
+  font-size:12px;
+  color:var(--sub);
+  font-weight:500;
+}
+.hero-cta{margin-top:8px;margin-bottom:18px}
 .hero-microcopy{
   display:flex;
   justify-content:center;
   gap:18px;
   color:var(--sub);
-  font-size:12px;
-  margin-bottom:64px;
+  font-size:13px;
+  margin-bottom:24px;
   font-weight:600;
   flex-wrap:wrap;
 }
 .hero-microcopy span{display:inline-flex;align-items:center;gap:4px}
-.hero-microcopy span::before{content:"";display:inline-block;width:14px;height:14px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322C55E' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");background-size:contain;background-repeat:no-repeat}
+.hero-microcopy span::before{content:"";display:inline-block;width:15px;height:15px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322C55E' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");background-size:contain;background-repeat:no-repeat}
 
 /* Hero 3画面横並び */
 .hero-screens{
@@ -277,7 +297,8 @@ p{color:var(--body)}
   align-items:flex-start;
   gap:28px;
   flex-wrap:wrap;
-  margin-top:16px;
+  margin-top:8px;
+  margin-bottom:8px;
 }
 .screen-card{
   width:220px;
@@ -328,7 +349,7 @@ p{color:var(--body)}
 
 @media (max-width:768px){
   .hero{padding:56px 0 64px}
-  .hero h1{font-size:25px;line-height:1.5}
+  .hero h1{font-size:23px;line-height:1.5}
   .hero-microcopy{margin-bottom:40px;gap:12px}
   .hero-screens{
     flex-wrap:nowrap;
@@ -664,20 +685,8 @@ footer{background:var(--bg-gray);padding:48px 0 28px}
     <div class="hero-badge">β版公開中・完全無料</div>
     <h1>
       幹事をやって<br class="sp-br">「なんか、疲れた」から<br>
-      「<span class="accent">またやりたい</span>」に変える。
+      「<span class="accent">またやりたいな</span>」に変える。
     </h1>
-    <p class="lead">割り勘計算・PayPay集金・傾斜配分・リマインドをLINEで全自動化。幹事をやるほどポイントも貯まる、新しい幹事アプリ。</p>
-    <div class="hero-cta">
-      <a href="https://line.me/R/ti/p/@kanji_relief" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 2C6.477 2 2 5.807 2 10.5c0 4.19 3.54 7.703 8.315 8.367.324.07.765.214.876.491.1.251.065.645.032.899l-.141.85c-.043.252-.2.984.862.537 1.063-.448 5.736-3.378 7.822-5.783C21.2 13.79 22 12.251 22 10.5 22 5.807 17.523 2 12 2z"/></svg>
-        LINEで無料登録
-      </a>
-    </div>
-    <div class="hero-microcopy">
-      <span>完全無料</span>
-      <span>10秒登録</span>
-      <span>アプリ不要</span>
-    </div>
     <div class="hero-screens">
       <div class="screen-card">
         <div class="screen-frame">
@@ -709,6 +718,23 @@ footer{background:var(--bg-gray);padding:48px 0 28px}
           <p>PayPayでワンタップ集金</p>
         </div>
       </div>
+    </div>
+    <div class="hero-sub">
+      <p class="hero-sub-main">幹事の面倒な仕事を、LINEで全自動化。</p>
+      <p class="hero-sub-features">立替計算・AI傾斜設定・集金リマインド</p>
+    </div>
+    <p class="hero-sub-emotion">幹事の頑張りが、次の思い出の種になる。</p>
+    <p class="hero-premicro">アプリのインストール不要</p>
+    <div class="hero-cta">
+      <a href="https://line.me/R/ti/p/@kanji_relief" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 2C6.477 2 2 5.807 2 10.5c0 4.19 3.54 7.703 8.315 8.367.324.07.765.214.876.491.1.251.065.645.032.899l-.141.85c-.043.252-.2.984.862.537 1.063-.448 5.736-3.378 7.822-5.783C21.2 13.79 22 12.251 22 10.5 22 5.807 17.523 2 12 2z"/></svg>
+        LINEで今すぐ無料登録（10秒）
+      </a>
+    </div>
+    <div class="hero-microcopy">
+      <span>完全無料</span>
+      <span>10秒登録</span>
+      <span>アプリ不要</span>
     </div>
   </div>
 </section>
