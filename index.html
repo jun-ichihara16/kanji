@@ -290,87 +290,30 @@ p{color:var(--body)}
 .hero-microcopy span{display:inline-flex;align-items:center;gap:4px}
 .hero-microcopy span::before{content:"";display:inline-block;width:15px;height:15px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322C55E' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");background-size:contain;background-repeat:no-repeat}
 
-/* Hero 3画面横並び */
-.hero-screens{
-  display:flex;
-  justify-content:center;
-  align-items:flex-start;
-  gap:28px;
-  flex-wrap:wrap;
-  margin-top:8px;
-  margin-bottom:8px;
+/* Hero illustration */
+.hero-illust{
+  max-width:760px;
+  margin:8px auto 0;
+  padding:0 8px;
 }
-.screen-card{
-  width:220px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  flex-shrink:0;
-}
-.screen-frame{
-  width:100%;
-  border-radius:28px;
-  background:#111827;
-  padding:8px;
-  box-shadow:0 6px 16px rgba(17,24,39,.1);
-}
-.screen-frame img{
+.hero-illust img{
   width:100%;
   height:auto;
-  border-radius:22px;
   display:block;
 }
-.screen-caption{margin-top:20px;text-align:center}
-.screen-step{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:28px;
-  height:28px;
-  border-radius:50%;
-  background:var(--text);
-  color:#fff;
-  font-weight:800;
-  font-size:13px;
-  font-family:'Inter',sans-serif;
-  margin-bottom:10px;
-}
-.screen-caption h3{font-size:15px;font-weight:700;margin-bottom:4px;color:var(--text)}
-.screen-caption p{font-size:12px;color:var(--sub)}
 
-/* Float animation */
-@keyframes float{
+/* Float animation (subtle) */
+@keyframes heroFloat{
   0%,100%{transform:translateY(0)}
-  50%{transform:translateY(-6px)}
+  50%{transform:translateY(-4px)}
 }
-.hero-screens .screen-card{animation:float 4s ease-in-out infinite}
-.hero-screens .screen-card:nth-child(2){animation-delay:.8s}
-.hero-screens .screen-card:nth-child(3){animation-delay:1.6s}
+.hero-illust img{animation:heroFloat 5s ease-in-out infinite}
 
 @media (max-width:768px){
   .hero{padding:56px 0 64px}
   .hero h1{font-size:23px;line-height:1.5}
-  .hero-microcopy{margin-bottom:40px;gap:12px}
-  .hero-screens{
-    flex-wrap:nowrap;
-    overflow-x:auto;
-    overflow-y:visible;
-    scroll-snap-type:x mandatory;
-    -webkit-overflow-scrolling:touch;
-    scrollbar-width:none;
-    gap:16px;
-    padding:8px 20px 16px;
-    margin:0 -20px;
-    justify-content:flex-start;
-  }
-  .hero-screens::-webkit-scrollbar{display:none}
-  .hero-screens .screen-card{
-    width:180px;
-    animation:none;
-    scroll-snap-align:center;
-  }
-  .screen-caption h3{font-size:14px}
-  .screen-caption p{font-size:11px}
+  .hero-microcopy{margin-bottom:24px;gap:12px}
+  .hero-illust{max-width:420px;margin-top:4px}
 }
 
 /* ===== Section Head ===== */
@@ -422,14 +365,27 @@ p{color:var(--body)}
   .pain-card{padding:24px 20px}
 }
 
-/* ===== Features ===== */
+/* ===== Features / How it works ===== */
 .features{padding:96px 0;background:#fff}
 .features-list{
   display:grid;
   grid-template-columns:repeat(3,1fr);
   gap:40px;
 }
-.feature-item{text-align:center}
+.feature-item{text-align:center;position:relative}
+/* PC: ステップ間の右向き矢印 */
+.feature-item:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  top:44px;
+  right:-28px;
+  width:18px;
+  height:18px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='9 18 15 12 9 6'/%3E%3C/svg%3E");
+  background-size:contain;
+  background-repeat:no-repeat;
+  opacity:.6;
+}
 .feature-item .step-num{
   display:inline-flex;
   align-items:center;
@@ -466,8 +422,16 @@ p{color:var(--body)}
 }
 @media (max-width:768px){
   .features{padding:72px 0}
-  .features-list{grid-template-columns:1fr;gap:40px}
+  .features-list{grid-template-columns:1fr;gap:48px}
   .feature-item .feature-screen{width:160px}
+  /* SP: 矢印を下向きに */
+  .feature-item:not(:last-child)::after{
+    top:auto;
+    right:auto;
+    bottom:-32px;
+    left:50%;
+    transform:translateX(-50%) rotate(90deg);
+  }
 }
 
 /* ===== Benefits ===== */
@@ -687,37 +651,8 @@ footer{background:var(--bg-gray);padding:48px 0 28px}
       幹事をやって<br class="sp-br">「なんか、疲れた」から<br>
       「<span class="accent">またやりたいな</span>」に変える。
     </h1>
-    <div class="hero-screens">
-      <div class="screen-card">
-        <div class="screen-frame">
-          <img src="05_img/app-screenshot-dashboard.png" alt="AI KANJI ダッシュボード画面" fetchpriority="high" decoding="async">
-        </div>
-        <div class="screen-caption">
-          <div class="screen-step inter">1</div>
-          <h3>作る</h3>
-          <p>URLをLINEでシェア</p>
-        </div>
-      </div>
-      <div class="screen-card">
-        <div class="screen-frame">
-          <img src="05_img/app-screenshot-manage.png" alt="AI KANJI イベント管理画面" loading="lazy">
-        </div>
-        <div class="screen-caption">
-          <div class="screen-step inter">2</div>
-          <h3>集まる</h3>
-          <p>参加者がURLから登録</p>
-        </div>
-      </div>
-      <div class="screen-card">
-        <div class="screen-frame">
-          <img src="05_img/app-screenshot-settle.png" alt="AI KANJI 精算画面" loading="lazy">
-        </div>
-        <div class="screen-caption">
-          <div class="screen-step inter">3</div>
-          <h3>精算する</h3>
-          <p>PayPayでワンタップ集金</p>
-        </div>
-      </div>
+    <div class="hero-illust">
+      <img src="05_img/hero-illust.png" alt="スマホをタップするだけで集金・リマインド・割り勘計算が自動で完了するイメージ" width="1376" height="768" fetchpriority="high" decoding="async">
     </div>
     <div class="hero-sub">
       <p class="hero-sub-main">幹事の面倒な仕事を、LINEで全自動化。</p>
@@ -778,13 +713,12 @@ footer{background:var(--bg-gray);padding:48px 0 28px}
   </div>
 </section>
 
-<!-- ===== FEATURES ===== -->
+<!-- ===== HOW IT WORKS ===== -->
 <section class="features" id="features">
   <div class="container">
     <div class="section-head fade-in">
       <span class="eyebrow">How it works</span>
-      <h2>すべて、LINEの中で完結。</h2>
-      <p>幹事がやることは、たった3つ。</p>
+      <h2>幹事の仕事が、3ステップで終わる。</h2>
     </div>
     <div class="features-list">
       <div class="feature-item fade-in">
@@ -792,24 +726,24 @@ footer{background:var(--bg-gray);padding:48px 0 28px}
         <div class="feature-screen">
           <img src="05_img/app-screenshot-dashboard.png" alt="イベント作成画面" loading="lazy">
         </div>
-        <h3>URLを作ってシェア</h3>
-        <p>イベント名を入れるだけで招待URLが自動生成。LINEに貼るだけで共有完了。</p>
+        <h3>イベントを作る</h3>
+        <p>URLをLINEでシェアするだけ。参加者は届いたURLから自分で登録できる。</p>
       </div>
       <div class="feature-item fade-in delay-1">
         <div class="step-num inter">2</div>
         <div class="feature-screen">
-          <img src="05_img/app-screenshot-manage.png" alt="参加者管理画面" loading="lazy">
+          <img src="05_img/app-screenshot-manage.png" alt="参加者一覧・集金設定画面" loading="lazy">
         </div>
-        <h3>参加者はアプリ不要</h3>
-        <p>URLから名前と支払い方法を入れるだけ。LINEログインもインストールも不要。</p>
+        <h3>みんなが集まる</h3>
+        <p>参加者がURLから登録。出欠・支払い方法の確認が自動で完了する。</p>
       </div>
       <div class="feature-item fade-in delay-2">
         <div class="step-num inter">3</div>
         <div class="feature-screen">
-          <img src="05_img/app-screenshot-settle.png" alt="精算・送金画面" loading="lazy">
+          <img src="05_img/app-screenshot-settle.png" alt="精算完了・リマインド送信画面" loading="lazy">
         </div>
-        <h3>AIが精算、PayPay送金</h3>
-        <p>傾斜配分も立替えもAI自動計算。PayPayへワンタップで送金リクエスト。</p>
+        <h3>自動で精算される</h3>
+        <p>立替計算・AI傾斜設定・集金リマインドがすべて自動。幹事は当日を楽しむだけ。</p>
       </div>
     </div>
   </div>
