@@ -1230,6 +1230,14 @@ export default function EventManage() {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><line x1="21" y1="14" x2="21" y2="14.01"/><line x1="21" y1="21" x2="21" y2="21.01"/><line x1="14" y1="21" x2="14" y2="21.01"/></svg>
         </button>
         </div>
+        {/* 参加者ページプレビュー（新規タブ・幹事視点） */}
+        <button
+          onClick={() => window.open(`${shareUrl}?preview=1`, '_blank', 'noopener,noreferrer')}
+          className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-sub hover:text-green transition"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          参加者ページをプレビュー
+        </button>
       </div>
 
       {/* 傾斜設定モーダル */}

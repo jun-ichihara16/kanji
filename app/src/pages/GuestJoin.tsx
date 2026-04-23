@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useEvent, Event, Participant, AdvanceRecord, SettlementRecord } from '../hooks/useEvent'
 import { calculateSettlements, Advance, SplitProfile, allocateShares } from '../lib/settle'
@@ -11,6 +11,9 @@ export default function GuestJoin() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
+  // ?preview=1: 幹事が自分の参加者ページをプレビュー表示するフラグ
+  const [searchParams] = useSearchParams()
+  const isPreview = searchParams.get('preview') === '1'
   const { fetchEventBySlug, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, fetchAdvances, addAdvance, deleteAdvance, fetchSettlements, upsertSettlement } = useEvent()
 
   const [event, setEvent] = useState<Event | null>(null)
@@ -114,7 +117,8 @@ export default function GuestJoin() {
     fetchEventBySlug(slug).then(async ({ data: ev }) => {
       if (!ev) { setLoading(false); return }
       // 幹事が自分のイベントURLを開いた場合は管理画面へリダイレクト
-      if (user?.id && ev.host_id === user.id) {
+      // ただし ?preview=1 が付いている場合はプレビュー扱いで参加者画面を表示する
+      if (user?.id && ev.host_id === user.id && !isPreview) {
         navigate(`/events/${ev.id}`, { replace: true })
         return
       }
@@ -127,7 +131,8 @@ export default function GuestJoin() {
       let currentParticipants = partRes.data || []
 
       // LINEログイン済みユーザーなら、まだ参加者に居ない場合のみ自動追加
-      if (user?.id && !currentParticipants.some((p) => p.user_id === user.id)) {
+      // プレビュー時は自動追加しない（幹事が誤って自分を参加者に加えないように）
+      if (user?.id && !isPreview && !currentParticipants.some((p) => p.user_id === user.id)) {
         const { data: newP } = await addParticipant(ev.id, {
           name: user.displayName,
           payment_method: 'paypay',
@@ -294,6 +299,24 @@ export default function GuestJoin() {
 
   return (
     <div className="flex-1 flex flex-col">
+      {/* プレビューバナー（幹事視点で参加者ページを確認中） */}
+      {isPreview && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-[11px] text-amber-800 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span className="truncate">プレビュー表示中（幹事視点・実データです）</span>
+          </div>
+          {event && user?.id === event.host_id && (
+            <button
+              onClick={() => navigate(`/events/${event.id}`, { replace: true })}
+              className="shrink-0 px-2 py-1 bg-white border border-amber-300 text-amber-700 rounded-lg text-[10px] font-bold hover:bg-amber-100 transition"
+            >
+              管理画面へ戻る
+            </button>
+          )}
+        </div>
+      )}
+
       {/* イベントヘッダー */}
       <div className="bg-green-light px-4 pt-4 pb-3">
         <h1 className="text-lg font-bold">{event.title}</h1>
