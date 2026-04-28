@@ -19,6 +19,8 @@ import AdvancePaymentForm from '../components/AdvancePaymentForm'
 import SplitSettingsModal from '../components/SplitSettingsModal'
 import { QRCodeCanvas } from 'qrcode.react'
 import { shareOrCopy, buildSettlementShareText, buildPaypayRequestText, isValidPaypayLink } from '../lib/share'
+import { SETTLEMENT_TITLE, buildRequestMessage } from '../lib/eventFlow'
+import { track } from '../lib/analytics'
 
 const TABS = ['参加者', '立替'] as const
 
@@ -431,6 +433,13 @@ export default function EventManage() {
       setEvent((prev) => prev ? { ...prev, status: 'active' } : prev)
     }
     await upsertSettlement(id, fromName, toName, amount, newVal)
+    if (newVal) {
+      track('payment_completed', {
+        settlement_type: event?.settlement_type ?? undefined,
+        event_template: event?.event_template ?? undefined,
+        total_amount: amount,
+      })
+    }
   }
 
   // 全員の精算が完了したら自動でイベントをアーカイブ（完了）にする
@@ -448,6 +457,11 @@ export default function EventManage() {
     (async () => {
       await updateEvent(id, { status: 'archived' })
       setEvent((prev) => prev ? { ...prev, status: 'archived' } : prev)
+      track('settlement_completed', {
+        settlement_type: event.settlement_type ?? undefined,
+        event_template: event.event_template ?? undefined,
+        participant_count: participants.length,
+      })
     })()
   }, [settledMap, computedSettlements, event?.status, id])
 
@@ -1183,6 +1197,45 @@ export default function EventManage() {
 
       {/* 固定アクションバー */}
       <div className="sticky bottom-0 bg-white border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.05)] p-3 space-y-2 z-40">
+        {/* 会計方式バッジ */}
+        {event.settlement_type && (
+          <div className="flex items-center justify-between text-[11px] text-sub px-1">
+            <span>
+              会計方式：<span className="font-semibold text-text">{SETTLEMENT_TITLE[event.settlement_type]}</span>
+            </span>
+            {event.request_started_at ? (
+              <span className="text-green-dark font-semibold">✓ 請求開始済</span>
+            ) : (
+              <button
+                onClick={async () => {
+                  if (!id) return
+                  await updateEvent(id, { request_started_at: new Date().toISOString() })
+                  setEvent((prev) => prev ? { ...prev, request_started_at: new Date().toISOString() } : prev)
+                  track('request_sent', {
+                    settlement_type: event.settlement_type ?? undefined,
+                    event_template: event.event_template ?? undefined,
+                    participant_count: participants.length,
+                    total_amount: event.total_amount ?? undefined,
+                  })
+                  // settlement_type に応じた請求文面で LINE 起動
+                  const message = buildRequestMessage({
+                    eventTitle: event.title,
+                    shareUrl,
+                    settlementType: event.settlement_type ?? 'equal_split',
+                  })
+                  window.open(
+                    `https://line.me/R/msg/text/?${encodeURIComponent(message)}`,
+                    '_blank',
+                    'noopener,noreferrer'
+                  )
+                }}
+                className="px-2.5 py-1 bg-green text-white rounded-full font-bold hover:bg-green-dark transition"
+              >
+                請求を開始する
+              </button>
+            )}
+          </div>
+        )}
         {/* リマインド行 */}
         {event.line_group_id && computedSettlements.some((s) => !settledMap[`${s.from}-${s.to}`]) && (
           <button
