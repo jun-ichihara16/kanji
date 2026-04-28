@@ -51,7 +51,7 @@ type StepName = typeof STEP_NAMES[number]
 
 export default function EventCreate() {
   const { user } = useAuth()
-  const { createEvent, addParticipant, updateParticipantSplit, updateEvent } = useEvent()
+  const { createEvent, addParticipant } = useEvent()
   const navigate = useNavigate()
 
   // ===== state =====
@@ -61,7 +61,6 @@ export default function EventCreate() {
   const [restorePromptDismissed, setRestorePromptDismissed] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [memberDraftName, setMemberDraftName] = useState('')
 
   // ===== 初回ロード: 下書き復元プロンプト =====
   useEffect(() => {
@@ -180,25 +179,6 @@ export default function EventCreate() {
     }
   }
 
-  function addMember() {
-    const name = memberDraftName.trim()
-    if (!name) return
-    if (draft.members.some((m) => m.name === name)) {
-      setMemberDraftName('')
-      return
-    }
-    patch({ members: [...draft.members, { name }] })
-    setMemberDraftName('')
-  }
-
-  function removeMember(name: string) {
-    patch({
-      members: draft.members.filter((m) => m.name !== name),
-      included_member_names: draft.included_member_names.filter((n) => n !== name),
-      weighted_member_names: draft.weighted_member_names.filter((n) => n !== name),
-    })
-  }
-
   function toggleIncluded(name: string) {
     const set = new Set(draft.included_member_names.length > 0 ? draft.included_member_names : memberNames)
     if (set.has(name)) set.delete(name)
@@ -283,21 +263,22 @@ export default function EventCreate() {
   }
 
   function validateSettlementDetail(): string | null {
+    // メンバーは EventCreate 段階では追加しない設計（URLシェア後の自己登録に委ねる）。
+    // 各方式とも合計金額のみ最低限のバリデーションとし、
+    // メンバー前提の詳細設定はメンバー集合後に EventManage で行う。
     if (draft.settlement_type === 'equal_split') {
       if (!draft.total_amount || draft.total_amount <= 0) return '合計金額を入力してください'
-      if (includedNames.length === 0) return '対象メンバーを1人以上選んでください'
       return null
     }
     if (draft.settlement_type === 'weighted_split') {
       if (!draft.total_amount || draft.total_amount <= 0) return '合計金額を入力してください'
-      if (memberNames.length === 0) return '参加メンバーを追加してください'
       if (weightedPreview?.mismatch) {
         return `合計が一致していません（差分: ¥${(weightedPreview.expectedTotal - weightedPreview.actualTotal).toLocaleString()}）`
       }
       return null
     }
     if (draft.settlement_type === 'reimbursement_split') {
-      if (draft.expense_items.length === 0) return '立替項目を1件以上登録してください'
+      // メンバー登録前は立替の登録ができないため、空でも進める
       return null
     }
     return null
@@ -305,7 +286,6 @@ export default function EventCreate() {
 
   function validateBeforeRequest(): string | null {
     if (!draft.title.trim()) return '会の名前は必須です'
-    if (draft.members.length === 0) return '請求開始には参加メンバーが必要です'
     return validateSettlementDetail()
   }
 
@@ -376,48 +356,18 @@ export default function EventCreate() {
         return
       }
 
-      // 2. 幹事自身を参加者に追加
-      const organizerName = user.displayName
-      const { data: organizerParticipant } = await addParticipant(ev.id, {
-        name: organizerName,
+      // 2. 幹事自身のみ参加者に追加（その他メンバーはURLシェアからの自己登録に委ねる）
+      await addParticipant(ev.id, {
+        name: user.displayName,
         payment_method: 'paypay',
         user_id: user.id,
       })
 
-      // 3. その他メンバーを追加（幹事と重複する名前はスキップ）
-      const otherMembers = draft.members.filter((m) => m.name !== organizerName)
-      const nameToParticipantId: Record<string, string> = {}
-      if (organizerParticipant) {
-        nameToParticipantId[organizerName] = organizerParticipant.id
-      }
-      for (const m of otherMembers) {
-        const { data: p } = await addParticipant(ev.id, {
-          name: m.name,
-          payment_method: m.payment_method ?? 'cash',
-        })
-        if (p) nameToParticipantId[m.name] = p.id
-      }
-
-      // 4. weighted_split の場合、weight / fixed_amount を participants に反映
-      if (draft.settlement_type === 'weighted_split') {
-        const targets = draft.weighted_member_names.length > 0
-          ? draft.weighted_member_names
-          : draft.members.map((m) => m.name)
-        for (const name of targets) {
-          const pid = nameToParticipantId[name]
-          if (!pid) continue
-          await updateParticipantSplit(pid, {
-            weight: draft.member_weights[name] ?? 1.0,
-            fixed_amount: draft.manual_amounts[name] ?? null,
-          })
-        }
-      }
-
-      // 5. event_created 発火
+      // 3. event_created 発火
       track('event_created', {
         event_template: draft.event_template,
         settlement_type: draft.settlement_type,
-        participant_count: draft.members.length,
+        participant_count: 1, // 作成時点では幹事のみ
         total_amount: draft.total_amount ?? undefined,
         has_expense_items: draft.expense_items.length > 0,
       })
@@ -491,14 +441,7 @@ export default function EventCreate() {
           <Step1Template draft={draft} onSelect={selectTemplate} />
         )}
         {step === 2 && (
-          <Step2BasicInfo
-            draft={draft}
-            patch={patch}
-            memberDraftName={memberDraftName}
-            setMemberDraftName={setMemberDraftName}
-            addMember={addMember}
-            removeMember={removeMember}
-          />
+          <Step2BasicInfo draft={draft} patch={patch} />
         )}
         {step === 3 && (
           <Step3SettlementType draft={draft} onSelect={selectSettlementType} />
@@ -566,7 +509,7 @@ export default function EventCreate() {
             disabled={saving}
             className="px-5 py-3 bg-green text-white font-bold rounded-xl disabled:opacity-40 hover:bg-green-dark transition"
           >
-            {saving ? '作成中...' : '招待・請求を開始する'}
+            {saving ? '作成中...' : 'イベントを作成する'}
           </button>
         )}
       </div>
@@ -621,17 +564,9 @@ function Step1Template({
 function Step2BasicInfo({
   draft,
   patch,
-  memberDraftName,
-  setMemberDraftName,
-  addMember,
-  removeMember,
 }: {
   draft: EventDraft
   patch: (p: Partial<EventDraft>) => void
-  memberDraftName: string
-  setMemberDraftName: (s: string) => void
-  addMember: () => void
-  removeMember: (name: string) => void
 }) {
   return (
     <>
@@ -677,47 +612,6 @@ function Step2BasicInfo({
             placeholder="例：居酒屋○○ 渋谷店"
             className="w-full p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
           />
-        </div>
-
-        <div>
-          <label className="text-xs font-semibold text-sub mb-1 block">参加メンバー</label>
-          <div className="flex gap-2 mb-2">
-            <input
-              value={memberDraftName}
-              onChange={(e) => setMemberDraftName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addMember() } }}
-              placeholder="名前を入力して追加"
-              className="flex-1 p-3 border border-border rounded-xl text-sm bg-gray-bg focus:outline-none focus:border-green"
-            />
-            <button
-              onClick={addMember}
-              className="px-4 py-3 bg-green text-white font-bold rounded-xl hover:bg-green-dark transition"
-            >
-              追加
-            </button>
-          </div>
-          {draft.members.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {draft.members.map((m) => (
-                <span
-                  key={m.name}
-                  className="inline-flex items-center gap-1 bg-gray-bg px-2.5 py-1 rounded-full text-xs"
-                >
-                  {m.name}
-                  <button
-                    onClick={() => removeMember(m.name)}
-                    className="text-sub hover:text-red-500 ml-0.5"
-                    aria-label={`${m.name}を削除`}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-          <p className="text-[11px] text-sub mt-1">
-            ※ 請求開始時に必須になります（今は未入力でも下書き保存OK）
-          </p>
         </div>
 
         <div>
@@ -843,7 +737,7 @@ function EqualForm({
         <label className="text-xs font-semibold text-sub mb-1 block">誰で割るか</label>
         {memberNames.length === 0 ? (
           <p className="text-xs text-sub bg-gray-bg p-3 rounded-xl">
-            参加メンバーがまだ登録されていません。Step 2で追加できます。
+            メンバーは招待URLから自己登録してもらいます。詳細は登録後にイベント管理画面で設定できます。
           </p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
@@ -954,7 +848,7 @@ function WeightedForm({
         <label className="text-xs font-semibold text-sub mb-1 block">対象メンバー</label>
         {memberNames.length === 0 ? (
           <p className="text-xs text-sub bg-gray-bg p-3 rounded-xl">
-            参加メンバーがまだ登録されていません。Step 2で追加できます。
+            メンバーは招待URLから自己登録してもらいます。詳細は登録後にイベント管理画面で設定できます。
           </p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
@@ -1097,6 +991,17 @@ function ReimbursementForm({
     setSplitTarget('all')
     setTargetNames([])
     setNote('')
+  }
+
+  if (memberNames.length === 0) {
+    return (
+      <div className="space-y-4">
+        <p className="text-xs text-sub bg-gray-bg p-3 rounded-xl leading-relaxed">
+          メンバーは招待URLから自己登録してもらいます。<br />
+          立替の登録はメンバーが揃ってから、イベント管理画面で行えます。
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -1291,9 +1196,7 @@ function Step5Confirm({
           {draft.event_time && ` ${draft.event_time}`}
         </SummaryRow>
         <SummaryRow label="場所">{draft.venue_name || '未指定'}</SummaryRow>
-        <SummaryRow label="参加メンバー">
-          {draft.members.length === 0 ? '未追加' : `${draft.members.length}人（${draft.members.map((m) => m.name).join('、')}）`}
-        </SummaryRow>
+        <SummaryRow label="参加メンバー">招待URLから自己登録</SummaryRow>
         <SummaryRow label="会計方式">
           {draft.settlement_type ? SETTLEMENT_TITLE[draft.settlement_type] : '—'}
         </SummaryRow>
@@ -1356,7 +1259,7 @@ function Step5Confirm({
       </div>
 
       <p className="text-[11px] text-sub mt-4">
-        「招待・請求を開始する」を押すとイベントが作成され、参加メンバーへの請求が始まります。
+        「イベントを作成する」を押すと管理画面に移動します。招待URLをLINEで共有してメンバーを集め、揃ったら請求を開始してください。
       </p>
     </>
   )
