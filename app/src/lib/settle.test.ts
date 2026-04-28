@@ -4,6 +4,10 @@ import {
   allocateShares,
   suggestSplitFromTags,
   buildSuggestedProfiles,
+  applyRounding,
+  calcEqualSplit,
+  calcWeightedSplit,
+  calcReimbursementSplit,
   Advance,
   SplitProfile,
 } from './settle'
@@ -332,5 +336,155 @@ describe('buildSuggestedProfiles', () => {
     expect(profiles[0].weight).toBe(0)
     expect(profiles[0].fixed_amount).toBe(0)
     expect(profiles[1].weight).toBe(1.0)
+  })
+})
+
+// =========================================
+// イベント作成フロー改修（007）
+// =========================================
+
+describe('applyRounding', () => {
+  it('floor / round / ceil', () => {
+    expect(applyRounding(123.4, 'floor')).toBe(123)
+    expect(applyRounding(123.5, 'floor')).toBe(123)
+    expect(applyRounding(123.4, 'round')).toBe(123)
+    expect(applyRounding(123.5, 'round')).toBe(124)
+    expect(applyRounding(123.4, 'ceil')).toBe(124)
+    expect(applyRounding(123.0, 'ceil')).toBe(123)
+  })
+  it('NaN/Infinity → 0', () => {
+    expect(applyRounding(NaN, 'round')).toBe(0)
+    expect(applyRounding(Infinity, 'round')).toBe(0)
+  })
+})
+
+describe('calcEqualSplit', () => {
+  it('4人で12000円の割り勘 → 1人3000円', () => {
+    const r = calcEqualSplit({
+      totalAmount: 12000,
+      memberNames: ['A', 'B', 'C', 'D'],
+      rounding: 'round',
+    })
+    expect(r.perPerson).toBe(3000)
+    expect(r.shares).toEqual({ A: 3000, B: 3000, C: 3000, D: 3000 })
+    const sum = Object.values(r.shares).reduce((a, b) => a + b, 0)
+    expect(sum).toBe(12000)
+  })
+
+  it('3人で10000円: 端数1円調整で合計一致', () => {
+    const r = calcEqualSplit({
+      totalAmount: 10000,
+      memberNames: ['A', 'B', 'C'],
+      rounding: 'round',
+    })
+    const sum = Object.values(r.shares).reduce((a, b) => a + b, 0)
+    expect(sum).toBe(10000)
+  })
+
+  it('floor 指定: 1人あたりは切り捨て、合計は端数で帳尻合わせ', () => {
+    const r = calcEqualSplit({
+      totalAmount: 10000,
+      memberNames: ['A', 'B', 'C'],
+      rounding: 'floor',
+    })
+    expect(r.perPerson).toBe(3333)
+    const sum = Object.values(r.shares).reduce((a, b) => a + b, 0)
+    expect(sum).toBe(10000)
+  })
+
+  it('対象0人 → 全員0', () => {
+    const r = calcEqualSplit({
+      totalAmount: 5000,
+      memberNames: [],
+      rounding: 'round',
+    })
+    expect(r.perPerson).toBe(0)
+  })
+
+  it('totalAmount=0 → 全員0', () => {
+    const r = calcEqualSplit({
+      totalAmount: 0,
+      memberNames: ['A', 'B'],
+      rounding: 'round',
+    })
+    expect(r.shares).toEqual({ A: 0, B: 0 })
+  })
+})
+
+describe('calcWeightedSplit', () => {
+  it('多め(1.3) / ふつう(1.0) / 少なめ(0.7) で配分', () => {
+    const r = calcWeightedSplit({
+      totalAmount: 30000,
+      members: [
+        { name: '先輩', weight: 1.3, fixed_amount: null },
+        { name: 'ふつう', weight: 1.0, fixed_amount: null },
+        { name: '学生', weight: 0.7, fixed_amount: null },
+      ],
+      rounding: 'round',
+    })
+    expect(r.actualTotal).toBe(30000)
+    expect(r.mismatch).toBe(false)
+    // 先輩 > ふつう > 学生
+    expect(r.shares['先輩']).toBeGreaterThan(r.shares['ふつう'])
+    expect(r.shares['ふつう']).toBeGreaterThan(r.shares['学生'])
+  })
+
+  it('一部メンバーに固定金額（manual_amounts）', () => {
+    const r = calcWeightedSplit({
+      totalAmount: 10000,
+      members: [
+        { name: 'A', weight: 1.0, fixed_amount: 1000 }, // 固定
+        { name: 'B', weight: 1.0, fixed_amount: null },
+        { name: 'C', weight: 1.0, fixed_amount: null },
+      ],
+      rounding: 'round',
+    })
+    expect(r.shares['A']).toBe(1000)
+    expect(r.actualTotal).toBe(10000)
+    expect(r.mismatch).toBe(false)
+  })
+})
+
+describe('calcReimbursementSplit', () => {
+  it('BBQ想定: 立替2件・立替者2人', () => {
+    const r = calcReimbursementSplit({
+      advances: [
+        { payerName: 'A', amount: 8000, splitTarget: 'all' }, // 食材
+        { payerName: 'B', amount: 4000, splitTarget: 'all' }, // 飲み物
+      ],
+      participantNames: ['A', 'B', 'C', 'D'],
+    })
+    // 1人あたり = 12000 / 4 = 3000
+    // A: +8000 - 3000 = +5000
+    // B: +4000 - 3000 = +1000
+    // C: -3000
+    // D: -3000
+    expect(r.balances['A']).toBe(5000)
+    expect(r.balances['B']).toBe(1000)
+    expect(r.balances['C']).toBe(-3000)
+    expect(r.balances['D']).toBe(-3000)
+    // 精算: C/Dから A/Bへ流れる
+    const sumOut = r.settlements.reduce((s, x) => s + x.amount, 0)
+    expect(sumOut).toBe(6000)
+  })
+
+  it('対象外メンバーあり（specific）', () => {
+    const r = calcReimbursementSplit({
+      advances: [
+        {
+          payerName: 'A',
+          amount: 6000,
+          splitTarget: 'specific',
+          targetNames: ['B', 'C'],
+        },
+      ],
+      participantNames: ['A', 'B', 'C', 'D'],
+    })
+    // D は対象外なので balance は 0
+    expect(r.balances['D']).toBe(0)
+    // A は受取6000
+    expect(r.balances['A']).toBe(6000)
+    expect(r.balances['B']).toBe(-3000)
+    expect(r.balances['C']).toBe(-3000)
   })
 })

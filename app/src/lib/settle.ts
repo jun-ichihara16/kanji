@@ -279,3 +279,166 @@ export function buildSuggestedProfiles(
     return { name: p.name, weight: s.weight, fixed_amount: s.fixed_amount }
   })
 }
+
+// =======================================================
+// イベント作成フロー改修（007）用ヘルパー
+// =======================================================
+
+export type RoundingRule = 'floor' | 'round' | 'ceil'
+export type SettlementType =
+  | 'equal_split'
+  | 'weighted_split'
+  | 'reimbursement_split'
+
+/**
+ * 端数処理を1円単位で適用する。
+ * round は半数切り上げ（Math.round）。
+ */
+export function applyRounding(value: number, rule: RoundingRule): number {
+  if (!Number.isFinite(value)) return 0
+  switch (rule) {
+    case 'floor':
+      return Math.floor(value)
+    case 'ceil':
+      return Math.ceil(value)
+    case 'round':
+    default:
+      return Math.round(value)
+  }
+}
+
+export interface EqualSplitInput {
+  totalAmount: number
+  memberNames: string[] // 対象メンバー（除外済み）
+  rounding: RoundingRule
+}
+
+export interface EqualSplitResult {
+  perPerson: number // 端数処理後の1人あたり金額
+  shares: Record<string, number> // 端数調整後の各人金額（合計 = totalAmount）
+  remainder: number // 端数として吸収された差分（1人あたり計算後 → 合計調整前）
+}
+
+/**
+ * equal_split: 全員ほぼ同じ金額で精算
+ * - 1人あたり金額に rounding を適用
+ * - 合計が totalAmount に一致するよう、最後に端数を1円単位で調整
+ */
+export function calcEqualSplit(input: EqualSplitInput): EqualSplitResult {
+  const { totalAmount, memberNames, rounding } = input
+  const shares: Record<string, number> = {}
+  if (memberNames.length === 0 || totalAmount <= 0) {
+    for (const n of memberNames) shares[n] = 0
+    return { perPerson: 0, shares, remainder: 0 }
+  }
+
+  const perPersonRaw = totalAmount / memberNames.length
+  const perPerson = applyRounding(perPersonRaw, rounding)
+
+  for (const n of memberNames) shares[n] = perPerson
+
+  // 合計を totalAmount に一致させるため端数を再分配
+  const currentTotal = perPerson * memberNames.length
+  let diff = totalAmount - currentTotal
+  let i = 0
+  while (diff > 0 && memberNames.length > 0) {
+    shares[memberNames[i % memberNames.length]] += 1
+    diff -= 1
+    i += 1
+  }
+  while (diff < 0 && memberNames.length > 0) {
+    const name = memberNames[i % memberNames.length]
+    if (shares[name] > 0) {
+      shares[name] -= 1
+      diff += 1
+    }
+    i += 1
+    if (i > memberNames.length * 10000) break
+  }
+
+  return { perPerson, shares, remainder: totalAmount - perPerson * memberNames.length }
+}
+
+export interface WeightedMember {
+  name: string
+  weight: number
+  fixed_amount: number | null
+}
+
+export interface WeightedSplitInput {
+  totalAmount: number
+  members: WeightedMember[] // 対象メンバー
+  rounding: RoundingRule
+}
+
+export interface WeightedSplitResult {
+  shares: Record<string, number>
+  expectedTotal: number // = totalAmount
+  actualTotal: number // 実際の合計
+  mismatch: boolean // 整合してない場合 true
+}
+
+/**
+ * weighted_split: 重み付きで金額に差をつける
+ * 既存 allocateShares() を流用しつつ、整合チェックを返す。
+ * rounding は最終調整に直接は使わない（allocateShares が常に1円単位で完全一致させる）。
+ * ただし将来の拡張のために I/F は受け取る。
+ */
+export function calcWeightedSplit(input: WeightedSplitInput): WeightedSplitResult {
+  const { totalAmount, members } = input
+  const profiles: SplitProfile[] = members.map((m) => ({
+    name: m.name,
+    weight: m.weight,
+    fixed_amount: m.fixed_amount,
+  }))
+  const shares = allocateShares(totalAmount, profiles)
+  const actualTotal = Object.values(shares).reduce((a, b) => a + b, 0)
+  return {
+    shares,
+    expectedTotal: totalAmount,
+    actualTotal,
+    mismatch: totalAmount > 0 && actualTotal !== totalAmount,
+  }
+}
+
+export interface ReimbursementSplitInput {
+  advances: Advance[]
+  participantNames: string[]
+  // weighted profiles を併用したい場合に渡す
+  profiles?: SplitProfile[]
+}
+
+export interface ReimbursementSplitResult {
+  settlements: Settlement[] // 誰が誰にいくら払うか（最小精算）
+  balances: Record<string, number> // 各人の純収支
+}
+
+/**
+ * reimbursement_split: 立替分を最後にまとめて精算
+ * 既存 calculateSettlements を流用しつつ、各人の純収支も返す。
+ */
+export function calcReimbursementSplit(input: ReimbursementSplitInput): ReimbursementSplitResult {
+  const { advances, participantNames, profiles } = input
+  const settlements = calculateSettlements(advances, participantNames, profiles)
+
+  // 純収支（プレビュー用）
+  const balance: Record<string, number> = {}
+  for (const n of participantNames) balance[n] = 0
+  for (const adv of advances) {
+    const targets =
+      adv.splitTarget === 'all'
+        ? participantNames
+        : (adv.targetNames ?? [])
+    if (targets.length === 0) continue
+    balance[adv.payerName] = (balance[adv.payerName] ?? 0) + adv.amount
+    const targetProfiles: SplitProfile[] = targets.map((n) => {
+      const found = profiles?.find((p) => p.name === n)
+      return found ?? { name: n, weight: 1.0, fixed_amount: null }
+    })
+    const shares = allocateShares(adv.amount, targetProfiles)
+    for (const n of targets) {
+      balance[n] = (balance[n] ?? 0) - (shares[n] ?? 0)
+    }
+  }
+  return { settlements, balances: balance }
+}
