@@ -737,7 +737,7 @@ function EqualForm({
         <label className="text-xs font-semibold text-sub mb-1 block">誰で割るか</label>
         {memberNames.length === 0 ? (
           <p className="text-xs text-sub bg-gray-bg p-3 rounded-xl">
-            メンバーは招待URLから自己登録してもらいます。詳細は登録後にイベント管理画面で設定できます。
+            招待URLから他メンバーに自己登録してもらいます。詳細は揃ってからイベント管理画面で設定できます。
           </p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
@@ -848,7 +848,7 @@ function WeightedForm({
         <label className="text-xs font-semibold text-sub mb-1 block">対象メンバー</label>
         {memberNames.length === 0 ? (
           <p className="text-xs text-sub bg-gray-bg p-3 rounded-xl">
-            メンバーは招待URLから自己登録してもらいます。詳細は登録後にイベント管理画面で設定できます。
+            招待URLから他メンバーに自己登録してもらいます。詳細は揃ってからイベント管理画面で設定できます。
           </p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
@@ -997,7 +997,7 @@ function ReimbursementForm({
     return (
       <div className="space-y-4">
         <p className="text-xs text-sub bg-gray-bg p-3 rounded-xl leading-relaxed">
-          メンバーは招待URLから自己登録してもらいます。<br />
+          招待URLから他メンバーに自己登録してもらいます。<br />
           立替の登録はメンバーが揃ってから、イベント管理画面で行えます。
         </p>
       </div>
@@ -1196,7 +1196,7 @@ function Step5Confirm({
           {draft.event_time && ` ${draft.event_time}`}
         </SummaryRow>
         <SummaryRow label="場所">{draft.venue_name || '未指定'}</SummaryRow>
-        <SummaryRow label="参加メンバー">招待URLから自己登録</SummaryRow>
+        <SummaryRow label="参加メンバー">幹事1名 + 招待URLから自己登録</SummaryRow>
         <SummaryRow label="会計方式">
           {draft.settlement_type ? SETTLEMENT_TITLE[draft.settlement_type] : '—'}
         </SummaryRow>
