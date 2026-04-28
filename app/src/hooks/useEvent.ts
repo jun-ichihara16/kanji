@@ -8,6 +8,32 @@ export const EVENT_CATEGORIES: EventCategory[] = [
   '飲み会', 'ランチ', '旅行', '合宿', '歓送迎会', '誕生日', 'その他',
 ]
 
+// === イベント作成フロー改修（007） ===
+// テンプレートと会計方式は内部値で持つ。表示文言は lib/eventFlow.ts に集約する。
+export type EventTemplate =
+  | 'nomikai'
+  | 'prepaid'
+  | 'bbq'
+  | 'futsal'
+  | 'travel'
+  | 'other'
+
+export const EVENT_TEMPLATES: EventTemplate[] = [
+  'nomikai', 'prepaid', 'bbq', 'futsal', 'travel', 'other',
+]
+
+export type SettlementType =
+  | 'equal_split'
+  | 'weighted_split'
+  | 'reimbursement_split'
+
+export const SETTLEMENT_TYPES: SettlementType[] = [
+  'equal_split', 'weighted_split', 'reimbursement_split',
+]
+
+export type RoundingRule = 'floor' | 'round' | 'ceil'
+export type FinalAdjustmentMode = 'minimum' | 'even'
+
 export interface Event {
   id: string
   slug: string
@@ -24,6 +50,15 @@ export interface Event {
   split_mode: SplitMode
   status: EventStatus
   category: EventCategory | null
+  // === 新規（007） ===
+  event_template: EventTemplate
+  settlement_type: SettlementType
+  total_amount: number | null
+  rounding_rule: RoundingRule
+  exclude_organizer: boolean
+  final_adjustment_mode: FinalAdjustmentMode
+  is_draft: boolean
+  request_started_at: string | null
   created_at: string
 }
 
@@ -132,6 +167,14 @@ export function useEvent() {
     fee_per_person?: number
     memo?: string
     category?: EventCategory
+    // === 新規（007） ===
+    event_template?: EventTemplate
+    settlement_type?: SettlementType
+    total_amount?: number | null
+    rounding_rule?: RoundingRule
+    exclude_organizer?: boolean
+    final_adjustment_mode?: FinalAdjustmentMode
+    is_draft?: boolean
   }) {
     const slug = nanoid(12)
     const { data, error } = await supabase
@@ -151,7 +194,24 @@ export function useEvent() {
     return { error }
   }
 
-  async function updateEvent(id: string, data: { title?: string; event_date?: string; venue_name?: string; status?: string; category?: EventCategory | null }) {
+  async function updateEvent(id: string, data: {
+    title?: string
+    event_date?: string
+    venue_name?: string
+    venue_address?: string
+    memo?: string
+    status?: string
+    category?: EventCategory | null
+    // === 新規（007） ===
+    event_template?: EventTemplate
+    settlement_type?: SettlementType
+    total_amount?: number | null
+    rounding_rule?: RoundingRule
+    exclude_organizer?: boolean
+    final_adjustment_mode?: FinalAdjustmentMode
+    is_draft?: boolean
+    request_started_at?: string | null
+  }) {
     const { error } = await supabase.from('events').update(data).eq('id', id)
     return { error }
   }
