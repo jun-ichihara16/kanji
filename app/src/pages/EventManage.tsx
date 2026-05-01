@@ -11,12 +11,14 @@ const CATEGORY_EMOJI: Record<EventCategory, string> = {
   '誕生日': '🎂',
   'その他': '✨',
 }
-import { calculateSettlements, Settlement, Advance, SplitProfile } from '../lib/settle'
+import { calculateSettlements, allocateShares, Settlement, Advance, SplitProfile } from '../lib/settle'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import SummaryCard from '../components/SummaryCard'
 import AdvancePaymentForm from '../components/AdvancePaymentForm'
 import SplitSettingsModal from '../components/SplitSettingsModal'
+import ParticipantAuthBadge from '../components/ParticipantAuthBadge'
+import ParticipantAuthSummary, { AuthFilter } from '../components/ParticipantAuthSummary'
 import { QRCodeCanvas } from 'qrcode.react'
 import { shareOrCopy, buildSettlementShareText, buildPaypayRequestText, isValidPaypayLink } from '../lib/share'
 import { SETTLEMENT_TITLE, buildRequestMessage } from '../lib/eventFlow'
@@ -70,6 +72,8 @@ export default function EventManage() {
   const [showPastList, setShowPastList] = useState(false)
   const [showSplitModal, setShowSplitModal] = useState(false)
   const [showCompleted, setShowCompleted] = useState(false)
+  // 参加者リストの認証状態フィルタ（表示のみに作用。集計や精算計算には影響しない）
+  const [authFilter, setAuthFilter] = useState<AuthFilter>('all')
 
   const load = async () => {
     if (!id) return
@@ -187,6 +191,30 @@ export default function EventManage() {
     () => advances.reduce((sum, a) => sum + a.amount, 0),
     [advances]
   )
+
+  // 各参加者の総負担額（全員の負担内訳・透明性表示用）
+  const shareByName = useMemo(() => {
+    if (advances.length === 0 || participants.length === 0) return {} as Record<string, number>
+    const participantNames = participants.map((p) => p.name)
+    const profiles: SplitProfile[] = participants.map((p) => ({
+      name: p.name,
+      weight: p.weight ?? 1.0,
+      fixed_amount: p.fixed_amount ?? null,
+    }))
+    const totals: Record<string, number> = {}
+    for (const name of participantNames) totals[name] = 0
+    for (const adv of advances) {
+      const targets = adv.split_target === 'all'
+        ? participantNames
+        : (adv.target_names ?? [])
+      const targetProfiles = targets.map((n) =>
+        profiles.find((p) => p.name === n) ?? { name: n, weight: 1, fixed_amount: null }
+      )
+      const shares = allocateShares(adv.amount, targetProfiles)
+      for (const n of targets) totals[n] = (totals[n] ?? 0) + (shares[n] ?? 0)
+    }
+    return totals
+  }, [advances, participants])
 
   // ===== 精算UI: 集計 & グルーピング =====
   const settlementStats = useMemo(() => {
@@ -732,9 +760,23 @@ export default function EventManage() {
               </div>
             )}
 
+            {/* 参加者リスト認証サマリー＋フィルタ */}
+            <ParticipantAuthSummary
+              total={participants.length}
+              lineCount={participants.filter((p) => p.user_id != null).length}
+              filter={authFilter}
+              onFilterChange={setAuthFilter}
+            />
+
             {/* 参加者リスト（編集・削除） */}
             <div className="space-y-2 mb-4">
-              {participants.map((p) => (
+              {participants
+                .filter((p) => {
+                  if (authFilter === 'line') return p.user_id != null
+                  if (authFilter === 'guest') return p.user_id == null
+                  return true
+                })
+                .map((p) => (
                 <div key={p.id} className="flex items-center gap-2 p-3 bg-white border border-border rounded-xl">
                   {editingId === p.id ? (
                     <div className="flex-1 space-y-2">
@@ -779,7 +821,13 @@ export default function EventManage() {
                   ) : (
                     <>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold">{p.name}</div>
+                        <div className="text-sm font-semibold flex items-center gap-1.5 flex-wrap">
+                          <span className="truncate">{p.name}</span>
+                          <ParticipantAuthBadge
+                            status={p.user_id ? 'line' : 'guest'}
+                            isOrganizer={!!event && !!p.user_id && p.user_id === event.host_id}
+                          />
+                        </div>
                         <div className="text-xs text-sub flex items-center gap-1 mt-0.5">
                           {p.payment_method === 'paypay' && (
                             <>
@@ -829,6 +877,15 @@ export default function EventManage() {
               {participants.length === 0 && (
                 <p className="text-center py-8 text-sub text-sm">まだ参加者がいません</p>
               )}
+              {participants.length > 0 && participants.filter((p) => {
+                if (authFilter === 'line') return p.user_id != null
+                if (authFilter === 'guest') return p.user_id == null
+                return true
+              }).length === 0 && (
+                <p className="text-center py-6 text-sub text-xs">
+                  {authFilter === 'line' ? 'LINEログイン済みの参加者はいません' : 'ゲスト登録の参加者はいません'}
+                </p>
+              )}
             </div>
             <div className="text-xs text-sub text-center mb-4">{participants.length}人 登録済み</div>
 
@@ -851,6 +908,62 @@ export default function EventManage() {
                     {event.split_mode === 'manual' && '手動調整'}
                   </span>
                 </button>
+              </div>
+            )}
+
+            {/* 全員の負担内訳（透明性担保: 誰がいくら支払うか表示） */}
+            {totalAdvance > 0 && Object.keys(shareByName).length > 0 && (
+              <div className="bg-white border border-border rounded-2xl p-4 mb-4 mt-4">
+                <h3 className="text-sm font-bold mb-2 flex items-center gap-2">
+                  <span>💰</span>
+                  <span>全員の負担内訳</span>
+                  {(event.split_mode === 'ai_mild' || event.split_mode === 'ai_strict') && (
+                    <span className="text-[10px] bg-green-light text-green-dark px-2 py-0.5 rounded-full font-semibold">
+                      🤖 AI提案
+                    </span>
+                  )}
+                </h3>
+                <p className="text-[11px] text-sub mb-3">
+                  誰がいくら支払うかを全員で共有します（透明性のため）
+                </p>
+                <div className="space-y-1">
+                  {participants.map((p) => {
+                    const amt = shareByName[p.name] ?? 0
+                    // 幹事自身を強調（user_id一致 or イベントhost_idと一致）
+                    const isHost = !!user?.id && p.user_id === user.id
+                    return (
+                      <div
+                        key={p.id}
+                        className={`flex items-center justify-between py-2 px-2.5 rounded-lg ${
+                          isHost ? 'bg-green-light' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                            isHost ? 'bg-green text-white' : 'bg-gray-bg text-sub'
+                          }`}>
+                            {p.name.charAt(0)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className={`text-sm truncate ${isHost ? 'font-bold' : 'font-medium'}`}>
+                              {p.name}{isHost && <span className="text-[10px] text-green-dark ml-1">（あなた・幹事）</span>}
+                            </div>
+                            {p.tags && p.tags.length > 0 && (
+                              <div className="text-[9px] text-sub truncate">{p.tags.join('・')}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className={`font-inter text-sm font-bold shrink-0 ${isHost ? 'text-green-dark' : 'text-dark'}`}>
+                          ¥{amt.toLocaleString()}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <div className="flex items-center justify-between py-2 px-2.5 border-t border-border mt-1 pt-3">
+                    <span className="text-xs font-bold text-sub">合計</span>
+                    <span className="font-inter text-sm font-bold">¥{totalAdvance.toLocaleString()}</span>
+                  </div>
+                </div>
               </div>
             )}
 
