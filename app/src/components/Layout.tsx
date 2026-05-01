@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { signOut } from '../lib/auth'
 import FeedbackWidget from './FeedbackWidget'
@@ -20,7 +21,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </a>
           {isLoggedIn ? (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-sub">{displayName}</span>
+              {/* ユーザー名クリックでマイページ（ダッシュボードのprofileタブ）へ */}
+              <Link
+                to="/dashboard?tab=profile"
+                className="text-xs text-sub hover:text-green transition"
+                aria-label="マイページを開く"
+              >
+                {displayName}
+              </Link>
               <button
                 onClick={() => signOut()}
                 className="text-xs text-sub hover:text-red-500 transition"

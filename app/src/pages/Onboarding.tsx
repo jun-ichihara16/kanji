@@ -194,15 +194,16 @@ export default function Onboarding() {
             <h1 className="text-2xl font-extrabold mb-3">登録完了！</h1>
             <p className="text-sm text-sub leading-relaxed mb-8">
               AI KANJIの準備ができました。<br />
-              さっそくイベントを作成しましょう！
+              まずはマイページで自分の情報を確認してみましょう。
             </p>
             <button
               onClick={() => {
-                window.location.href = '/app/dashboard'
+                // 初回はマイページ着地（PayPay番号などプロフィール確認のため）
+                window.location.href = '/app/dashboard?tab=profile'
               }}
               className="w-full py-4 bg-green text-white font-bold rounded-xl hover:bg-green-dark transition"
             >
-              ダッシュボードへ
+              マイページへ
             </button>
           </div>
         )}

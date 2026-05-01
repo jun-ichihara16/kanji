@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useEvent, Event, Participant, AdvanceRecord, EVENT_CATEGORIES, EventCategory } from '../hooks/useEvent'
 import Profile from './Profile'
@@ -26,7 +26,10 @@ export default function Dashboard() {
   const [advanceTotals, setAdvanceTotals] = useState<Record<string, number>>({})
   const [settlementStatus, setSettlementStatus] = useState<Record<string, { total: number; settled: number }>>({})
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<Tab>('events')
+  // 初期タブは URL クエリ ?tab=profile があれば profile、なければ events
+  const [searchParams] = useSearchParams()
+  const initialTab: Tab = searchParams.get('tab') === 'profile' ? 'profile' : 'events'
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
   const [eventFilter, setEventFilter] = useState<EventFilter>('active')
   const [categoryFilter, setCategoryFilter] = useState<EventCategory | 'all'>('all')
 
