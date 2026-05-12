@@ -6,6 +6,7 @@ import { calculateSettlements, Advance, SplitProfile, allocateShares } from '../
 import { supabase } from '../lib/supabase'
 import { shareOrCopy, buildSettlementShareText, buildPaypayRequestText, buildEventPublicUrl, isValidPaypayLink } from '../lib/share'
 import { loginWithLINE } from '../lib/auth'
+import ParticipantAuthBadge from '../components/ParticipantAuthBadge'
 
 export default function GuestJoin() {
   const { slug } = useParams<{ slug: string }>()
@@ -518,7 +519,13 @@ export default function GuestJoin() {
                           {p.name.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm">{p.name}</div>
+                          <div className="font-medium text-sm flex items-center gap-1.5 flex-wrap">
+                            <span className="truncate">{p.name}</span>
+                            <ParticipantAuthBadge
+                              status={p.user_id ? 'line' : 'guest'}
+                              isOrganizer={!!event && !!p.user_id && p.user_id === event.host_id}
+                            />
+                          </div>
                           <div className="text-xs text-sub flex items-center gap-1">
                             {p.payment_method === 'paypay' && (
                               <>
