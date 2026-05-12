@@ -66,8 +66,6 @@ export default function EventManage() {
   const [editVenue, setEditVenue] = useState('')
   const [editCategory, setEditCategory] = useState<EventCategory | null>(null)
   const [editingAdvId, setEditingAdvId] = useState<string | null>(null)
-  const [editAdvAmount, setEditAdvAmount] = useState('')
-  const [editAdvDesc, setEditAdvDesc] = useState('')
   const [pastParticipants, setPastParticipants] = useState<{ name: string; payment_method: string; paypay_phone: string | null; paypay_link_url: string | null; paypay_link_type: 'amount_free' | null }[]>([])
   const [showPastList, setShowPastList] = useState(false)
   const [showSplitModal, setShowSplitModal] = useState(false)
@@ -415,14 +413,29 @@ export default function EventManage() {
     if (newAdv) setAdvances((prev) => [...prev, newAdv])
   }
 
-  const handleSaveAdvance = async (a: AdvanceRecord) => {
-    if (!editAdvAmount) { setEditingAdvId(null); return }
+  // 立替の全項目編集（立替者・内容・金額・対象者・対象者リスト）
+  const handleSaveAdvanceFull = async (a: AdvanceRecord, data: {
+    payer_name: string
+    amount: number
+    description: string
+    split_target: string
+    target_names: string[]
+  }) => {
+    const target_names = data.split_target === 'specific' ? data.target_names : null
     await supabase.from('advances').update({
-      amount: parseInt(editAdvAmount),
-      description: editAdvDesc || null,
+      payer_name: data.payer_name,
+      amount: data.amount,
+      description: data.description || null,
+      split_target: data.split_target,
+      target_names,
     }).eq('id', a.id)
     setAdvances((prev) => prev.map((ad) => ad.id === a.id ? {
-      ...ad, amount: parseInt(editAdvAmount), description: editAdvDesc || null,
+      ...ad,
+      payer_name: data.payer_name,
+      amount: data.amount,
+      description: data.description || null,
+      split_target: data.split_target,
+      target_names,
     } : ad))
     setEditingAdvId(null)
   }
@@ -1268,19 +1281,21 @@ export default function EventManage() {
                 <h3 className="text-sm font-bold mb-2">登録済みの立替</h3>
                 <div className="space-y-2">
                   {advances.map((a) => (
-                    <div key={a.id} className="bg-white border border-border rounded-xl p-3">
+                    <div key={a.id} className={editingAdvId === a.id ? '' : 'bg-white border border-border rounded-xl p-3'}>
                       {editingAdvId === a.id ? (
-                        <div className="space-y-2">
-                          <div className="text-sm font-semibold">{a.payer_name}</div>
-                          <input value={editAdvDesc} onChange={(e) => setEditAdvDesc(e.target.value)} placeholder="内容"
-                            className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green" />
-                          <input type="number" value={editAdvAmount} onChange={(e) => setEditAdvAmount(e.target.value)} placeholder="金額"
-                            className="w-full p-2 border border-border rounded-lg text-sm focus:outline-none focus:border-green font-inter" />
-                          <div className="flex gap-2">
-                            <button onClick={() => handleSaveAdvance(a)} className="text-xs bg-green text-white font-bold px-3 py-1.5 rounded-lg">保存</button>
-                            <button onClick={() => setEditingAdvId(null)} className="text-xs text-sub px-3 py-1.5">取消</button>
-                          </div>
-                        </div>
+                        <AdvancePaymentForm
+                          mode="edit"
+                          participantNames={participants.map((p) => p.name)}
+                          initialValues={{
+                            payer_name: a.payer_name,
+                            amount: a.amount,
+                            description: a.description || '',
+                            split_target: a.split_target,
+                            target_names: a.target_names || [],
+                          }}
+                          onSubmit={(data) => handleSaveAdvanceFull(a, data)}
+                          onCancel={() => setEditingAdvId(null)}
+                        />
                       ) : (
                         <div className="flex items-center gap-3">
                           <div className="flex-1 min-w-0">
@@ -1292,7 +1307,7 @@ export default function EventManage() {
                           <div className="font-inter text-sm font-bold text-green shrink-0">
                             ¥{a.amount.toLocaleString()}
                           </div>
-                          <button onClick={() => { setEditingAdvId(a.id); setEditAdvAmount(String(a.amount)); setEditAdvDesc(a.description || '') }}
+                          <button onClick={() => setEditingAdvId(a.id)}
                             className="shrink-0 text-xs text-sub hover:text-green">編集</button>
                           <button onClick={() => handleDeleteAdvance(a.id)}
                             className="shrink-0 text-xs text-sub hover:text-red-500">削除</button>

@@ -1,23 +1,44 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+export interface AdvanceFormValues {
+  payer_name: string
+  amount: number
+  description: string
+  split_target: string
+  target_names: string[]
+}
 
 export default function AdvancePaymentForm({
   participantNames,
   onSubmit,
+  mode = 'create',
+  initialValues,
+  onCancel,
 }: {
   participantNames: string[]
-  onSubmit: (data: {
-    payer_name: string
-    amount: number
-    description: string
-    split_target: string
-    target_names: string[]
-  }) => void
+  onSubmit: (data: AdvanceFormValues) => void
+  mode?: 'create' | 'edit'
+  initialValues?: AdvanceFormValues
+  onCancel?: () => void
 }) {
-  const [payerName, setPayerName] = useState('')
-  const [amount, setAmount] = useState('')
-  const [description, setDescription] = useState('')
-  const [splitTarget, setSplitTarget] = useState<'all' | 'specific'>('all')
-  const [targetNames, setTargetNames] = useState<string[]>([])
+  const [payerName, setPayerName] = useState(initialValues?.payer_name ?? '')
+  const [amount, setAmount] = useState(initialValues?.amount != null ? String(initialValues.amount) : '')
+  const [description, setDescription] = useState(initialValues?.description ?? '')
+  const [splitTarget, setSplitTarget] = useState<'all' | 'specific'>(
+    (initialValues?.split_target as 'all' | 'specific') ?? 'all'
+  )
+  const [targetNames, setTargetNames] = useState<string[]>(initialValues?.target_names ?? [])
+
+  // 編集対象が切り替わったら、初期値を反映し直す
+  useEffect(() => {
+    if (mode === 'edit' && initialValues) {
+      setPayerName(initialValues.payer_name)
+      setAmount(String(initialValues.amount))
+      setDescription(initialValues.description ?? '')
+      setSplitTarget((initialValues.split_target as 'all' | 'specific') ?? 'all')
+      setTargetNames(initialValues.target_names ?? [])
+    }
+  }, [mode, initialValues?.payer_name, initialValues?.amount, initialValues?.description, initialValues?.split_target, initialValues?.target_names?.join(',')])
 
   const toggleTarget = (name: string) => {
     setTargetNames((prev) =>
@@ -34,16 +55,20 @@ export default function AdvancePaymentForm({
       split_target: splitTarget,
       target_names: splitTarget === 'all' ? [] : targetNames,
     })
-    setPayerName('')
-    setAmount('')
-    setDescription('')
-    setSplitTarget('all')
-    setTargetNames([])
+    if (mode === 'create') {
+      setPayerName('')
+      setAmount('')
+      setDescription('')
+      setSplitTarget('all')
+      setTargetNames([])
+    }
   }
 
+  const isEdit = mode === 'edit'
+
   return (
-    <div className="bg-white border border-border rounded-2xl p-4 mb-4">
-      <h3 className="text-sm font-bold mb-3">立替を登録</h3>
+    <div className={`bg-white border rounded-2xl p-4 mb-4 ${isEdit ? 'border-green' : 'border-border'}`}>
+      <h3 className="text-sm font-bold mb-3">{isEdit ? '立替を編集' : '立替を登録'}</h3>
 
       {/* Payer */}
       <div className="mb-3">
@@ -122,13 +147,23 @@ export default function AdvancePaymentForm({
         )}
       </div>
 
-      <button
-        onClick={handleSubmit}
-        disabled={!payerName || !amount}
-        className="w-full py-3.5 bg-green text-white font-bold rounded-xl mt-2 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-green-dark transition"
-      >
-        立替を登録する
-      </button>
+      <div className="flex gap-2 mt-2">
+        {isEdit && onCancel && (
+          <button
+            onClick={onCancel}
+            className="px-5 py-3.5 bg-gray-bg text-sub font-semibold rounded-xl"
+          >
+            取消
+          </button>
+        )}
+        <button
+          onClick={handleSubmit}
+          disabled={!payerName || !amount}
+          className="flex-1 py-3.5 bg-green text-white font-bold rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-green-dark transition"
+        >
+          {isEdit ? '保存する' : '立替を登録する'}
+        </button>
+      </div>
     </div>
   )
 }
