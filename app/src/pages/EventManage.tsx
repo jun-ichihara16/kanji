@@ -66,7 +66,7 @@ export default function EventManage() {
   const [editVenue, setEditVenue] = useState('')
   const [editCategory, setEditCategory] = useState<EventCategory | null>(null)
   const [editingAdvId, setEditingAdvId] = useState<string | null>(null)
-  const [pastParticipants, setPastParticipants] = useState<{ name: string; payment_method: string; paypay_phone: string | null; paypay_link_url: string | null; paypay_link_type: 'amount_free' | null }[]>([])
+  const [pastParticipants, setPastParticipants] = useState<{ name: string; payment_method: string; paypay_phone: string | null; paypay_link_url: string | null; paypay_link_type: 'amount_free' | null; user_id: string | null }[]>([])
   const [showPastList, setShowPastList] = useState(false)
   const [showSplitModal, setShowSplitModal] = useState(false)
   const [showCompleted, setShowCompleted] = useState(false)
@@ -154,10 +154,11 @@ export default function EventManage() {
       if (otherEventIds.length === 0) return
       const { data: allParts } = await supabase
         .from('participants')
-        .select('name, payment_method, paypay_phone, paypay_link_url, paypay_link_type')
+        .select('name, payment_method, paypay_phone, paypay_link_url, paypay_link_type, user_id, created_at')
         .in('event_id', otherEventIds)
+        .order('created_at', { ascending: false })
       if (!allParts) return
-      // 重複排除（名前ベース）
+      // 重複排除（名前ベース）。新しい順なので、最新の user_id を優先採用できる
       const seen = new Set<string>()
       const unique = allParts.filter((p: any) => {
         if (seen.has(p.name)) return false
@@ -755,7 +756,11 @@ export default function EventManage() {
                             {pp.name.charAt(0)}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{pp.name}</div>
+                            <div className="text-sm font-medium flex items-center gap-1.5 flex-wrap">
+                              <span className="truncate">{pp.name}</span>
+                              {/* 過去 LINE ログイン済みの人にだけバッジ表示（ゲスト扱いの人にはバッジ無し） */}
+                              {pp.user_id && <ParticipantAuthBadge status="line" />}
+                            </div>
                             <div className="text-[10px] text-sub">
                               {pp.payment_method === 'paypay'
                                 ? (pp.paypay_phone ? `PayPay: ${pp.paypay_phone}` : pp.paypay_link_url ? 'PayPay: 受取リンク' : 'PayPay')
