@@ -10,6 +10,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@line/liff": "^2.29.0",
     "@supabase/supabase-js": "^2.49.1",
     "nanoid": "^5.0.9",
     "qrcode.react": "^4.2.0",
