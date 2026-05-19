@@ -355,6 +355,30 @@ export function useEvent() {
     return { ok: res.ok, data }
   }
 
+  // Phase 2 v1.2 C-6 拡張: LINE ログイン済み参加者への個別 push
+  // 失敗時のレスポンス reason:
+  //   'no_user_id' / 'no_line_user_id' → 参加者が LINE 未連携。クライアントはコピーボタンへフォールバック
+  //   'line_push_failed' → 友だち未追加 等、LINE API 側で拒否
+  //   'no_unsettled' → 既に精算済み
+  async function notifyParticipantPayment(input: {
+    eventId: string
+    participantId: string
+    hostUserId: string
+  }): Promise<{ ok: boolean; data: { settlement_count?: number; total?: number; error?: string; reason?: string } }> {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+    const res = await fetch(`${supabaseUrl}/functions/v1/notify-participant-payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify(input),
+    })
+    const data = await res.json()
+    return { ok: res.ok, data }
+  }
+
   // === Settlements ===
   async function fetchSettlements(eventId: string) {
     const { data, error } = await supabase
@@ -439,6 +463,7 @@ export function useEvent() {
     fetchSettlements,
     upsertSettlement,
     markEventCompleted,
+    notifyParticipantPayment,
     updateReminderSettings,
     sendGroupReminder,
     // Admin APIs — RLS制限される操作はEdge Function(service key)経由

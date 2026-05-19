@@ -31,15 +31,15 @@ type ModeTab = 'equal' | 'ai_mild' | 'ai_strict' | 'manual'
 
 const MODE_LABEL: Record<ModeTab, string> = {
   equal: '全員同額',
-  ai_mild: 'AI マイルド',
-  ai_strict: 'AI しっかり',
+  ai_mild: '気持ち傾斜',
+  ai_strict: '漢気傾斜',
   manual: '手動のみ',
 }
 
 const MODE_DESC: Record<ModeTab, string> = {
   equal: '全員で均等に割り勘',
-  ai_mild: 'タグで控えめ傾斜（女性/若手 -20%, 上司 +20%）',
-  ai_strict: 'タグでしっかり傾斜（女性/若手 -30%, 上司 +50%）',
+  ai_mild: '気持ち程度に傾ける（女性/若手 -20%, 上司 +20%）',
+  ai_strict: '漢気を見せて多めに払う（女性/若手 -30%, 上司 +50%）',
   manual: 'ベース均等、全員を手動で調整',
 }
 
@@ -189,7 +189,7 @@ export default function SplitSettingsModal({
             {(tab === 'ai_mild' || tab === 'ai_strict') && (
               <div className="bg-green-light/40 border border-green/20 rounded-lg px-2.5 py-2 mb-2">
                 <div className="text-[10px] text-sub mb-1">
-                  {tab === 'ai_mild' ? 'AI マイルドの係数' : 'AI しっかりの係数'}
+                  {tab === 'ai_mild' ? '気持ち傾斜の係数' : '漢気傾斜の係数'}
                 </div>
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-semibold text-green-dark">
                   {TAGS.map((t) => (
