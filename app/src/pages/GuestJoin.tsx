@@ -389,7 +389,7 @@ export default function GuestJoin() {
                 </div>
                 {isAiMode && (
                   <div className="text-[10px] text-sub mt-2">
-                    {splitMode === 'ai_mild' ? 'マイルド傾斜' : 'しっかり傾斜'}
+                    {splitMode === 'ai_mild' ? '気持ち傾斜' : '漢気傾斜'}
                     で計算されています
                   </div>
                 )}
