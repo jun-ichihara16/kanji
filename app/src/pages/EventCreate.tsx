@@ -38,6 +38,7 @@ import {
   RoundingRule as SettleRoundingRule,
 } from '../lib/settle'
 import { track } from '../lib/analytics'
+import { detectHostWasParticipant } from '../lib/invitation'
 
 const STEP_NAMES = [
   'template',
@@ -371,6 +372,12 @@ export default function EventCreate() {
         total_amount: draft.total_amount ?? undefined,
         has_expense_items: draft.expense_items.length > 0,
       })
+
+      // Phase 2 v1.2 C-8: 「参加者→幹事化」を自動判定
+      //   過去に他イベントの participants だった、または localStorage に
+      //   招待 token が残っているなら host_was_participant=true を立てる。
+      //   失敗してもナビゲーションを止めない。
+      void detectHostWasParticipant({ newEventId: ev.id, hostUserId: user.id })
 
       // 6. 下書き破棄
       clearDraft(user.id)

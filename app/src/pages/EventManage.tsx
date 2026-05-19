@@ -25,6 +25,7 @@ import { SETTLEMENT_TITLE, buildRequestMessage } from '../lib/eventFlow'
 import { track } from '../lib/analytics'
 import { buildIndividualReminderText } from '../lib/reminder-template'
 import { trackGrowthEvent } from '../lib/growth-events'
+import { createInvitationToken, appendInvToken } from '../lib/invitation'
 
 const TABS = ['参加者', '立替'] as const
 
@@ -294,6 +295,19 @@ export default function EventManage() {
 
     return { hostName, toReceive, toPay }
   }, [advances, computedSettlements, settledMap])
+
+  // Phase 2 v1.2 C-8: 招待 token を発行・取得して shareUrl に付与する
+  const [invToken, setInvToken] = useState<string | null>(null)
+  useEffect(() => {
+    if (!event?.id || !user?.id) return
+    let cancelled = false
+    void createInvitationToken(event.id, user.id).then(({ token }) => {
+      if (!cancelled && token) setInvToken(token)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [event?.id, user?.id])
 
   // Phase 2 v1.2 C-6: 催促文面コピー(個別宛て)
   // 押下した settlement キー(`${from}-${to}`)を一時保持し、「コピー済み ✓」表示に使う
@@ -579,7 +593,9 @@ export default function EventManage() {
       .every((s) => !!settledMap[`${s.from}-${s.to}`])
   ).length
   const unpaidCount = debtorNames.length - paidCount
-  const shareUrl = `${window.location.origin}/app/e/${event.slug}`
+  const baseShareUrl = `${window.location.origin}/app/e/${event.slug}`
+  // Phase 2 v1.2 C-8: 招待 token が取得できていれば付与し、参加経路を追跡可能にする
+  const shareUrl = invToken ? appendInvToken(baseShareUrl, invToken) : baseShareUrl
 
   return (
     <div className="flex-1 flex flex-col">
