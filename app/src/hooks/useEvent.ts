@@ -59,6 +59,9 @@ export interface Event {
   final_adjustment_mode: FinalAdjustmentMode
   is_draft: boolean
   request_started_at: string | null
+  // === Phase 2 計測基盤(008) ===
+  completed_at: string | null
+  re_completed_at: string | null
   created_at: string
 }
 
@@ -361,6 +364,45 @@ export function useEvent() {
     return { data: data as SettlementRecord[] | null, error }
   }
 
+  // === Phase 2: 精算完了の初回記録(008) ===
+  //
+  // 「全 settlement が is_settled=true」になった瞬間に呼ぶ。
+  // - events.completed_at が NULL ならば初回完了として NOW() を記録(IS NULL ガードで上書き防止)
+  // - 既に completed_at が入っているなら re_completed_at に NOW() を書く(initialは触らない)
+  //
+  // 戻り値:
+  //   firstTime=true  → 初回精算完了。MSH に新しく入った
+  //   firstTime=false → 再完了 or イベント未取得 or RLS で書けず
+  async function markEventCompleted(eventId: string): Promise<{ firstTime: boolean; error: unknown }> {
+    const now = new Date().toISOString()
+    const { data: existing, error: fetchErr } = await supabase
+      .from('events')
+      .select('id, completed_at')
+      .eq('id', eventId)
+      .maybeSingle()
+
+    if (fetchErr || !existing) {
+      return { firstTime: false, error: fetchErr ?? 'event_not_found' }
+    }
+
+    if (existing.completed_at == null) {
+      const { data, error } = await supabase
+        .from('events')
+        .update({ completed_at: now })
+        .eq('id', eventId)
+        .is('completed_at', null)
+        .select('id')
+      const wrote = Array.isArray(data) && data.length > 0
+      return { firstTime: wrote, error }
+    }
+
+    const { error } = await supabase
+      .from('events')
+      .update({ re_completed_at: now })
+      .eq('id', eventId)
+    return { firstTime: false, error }
+  }
+
   async function upsertSettlement(eventId: string, fromName: string, toName: string, amount: number, isSettled: boolean) {
     const { data, error } = await supabase
       .from('settlements')
@@ -396,6 +438,7 @@ export function useEvent() {
     deleteAdvance,
     fetchSettlements,
     upsertSettlement,
+    markEventCompleted,
     updateReminderSettings,
     sendGroupReminder,
     // Admin APIs — RLS制限される操作はEdge Function(service key)経由

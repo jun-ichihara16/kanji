@@ -14,6 +14,7 @@ export type AnalyticsEvent =
   | 'request_sent'
   | 'payment_completed'
   | 'settlement_completed'
+  | 'event_first_completion'
   | 'template_changed'
   | 'settlement_type_changed'
   | 'draft_saved'

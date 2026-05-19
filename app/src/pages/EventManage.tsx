@@ -31,7 +31,7 @@ export default function EventManage() {
   const {
     fetchEventById, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, togglePaid,
     fetchAdvances, addAdvance, deleteAdvance, deleteEvent, updateEvent,
-    fetchSettlements, upsertSettlement, updateReminderSettings, sendGroupReminder,
+    fetchSettlements, upsertSettlement, markEventCompleted, updateReminderSettings, sendGroupReminder,
     updateParticipantSplit, updateSplitMode,
     fetchMyEvents,
   } = useEvent()
@@ -495,15 +495,25 @@ export default function EventManage() {
     )
     if (!allSettled) return
 
-    // 自動アーカイブ（1度だけ）
+    // 自動アーカイブ（1度だけ）+ Phase 2: completed_at 初回記録
     (async () => {
       await updateEvent(id, { status: 'archived' })
-      setEvent((prev) => prev ? { ...prev, status: 'archived' } : prev)
+      // Phase 2 計測基盤: events.completed_at に初回完了時刻を記録(不変ルール、IS NULL ガード)
+      const completion = await markEventCompleted(id)
+      setEvent((prev) =>
+        prev ? { ...prev, status: 'archived', completed_at: prev.completed_at ?? new Date().toISOString() } : prev,
+      )
       track('settlement_completed', {
         settlement_type: event.settlement_type ?? undefined,
         event_template: event.event_template ?? undefined,
         participant_count: participants.length,
       })
+      if (completion.firstTime) {
+        track('event_first_completion', {
+          settlement_type: event.settlement_type ?? undefined,
+          event_template: event.event_template ?? undefined,
+        })
+      }
     })()
   }, [settledMap, computedSettlements, event?.status, id])
 
