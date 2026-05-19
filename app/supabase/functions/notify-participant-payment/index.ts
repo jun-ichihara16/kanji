@@ -29,6 +29,49 @@ type RequestPayload = {
   hostUserId?: string
 }
 
+// send-group-reminder と同じロジック。
+// KANJI の settlements テーブルは「精算完了にする」ボタンで初めて行が入る設計のため、
+// 未精算分を取得するには advances から都度計算する必要がある。
+function calculateSettlements(
+  advances: { payer_name: string; amount: number; split_target: string; target_names: string[] | null }[],
+  names: string[],
+) {
+  const balance: Record<string, number> = {}
+  names.forEach((n) => {
+    balance[n] = 0
+  })
+  for (const adv of advances) {
+    const targets = adv.split_target === 'all' ? names : adv.target_names ?? []
+    if (targets.length === 0) continue
+    const baseShare = Math.floor(adv.amount / targets.length)
+    const remainder = adv.amount - baseShare * targets.length
+    balance[adv.payer_name] = (balance[adv.payer_name] ?? 0) + adv.amount
+    for (let i = 0; i < targets.length; i++) {
+      balance[targets[i]] = (balance[targets[i]] ?? 0) - (baseShare + (i < remainder ? 1 : 0))
+    }
+  }
+  const creditors: { name: string; amount: number }[] = []
+  const debtors: { name: string; amount: number }[] = []
+  for (const [name, bal] of Object.entries(balance)) {
+    if (bal > 0) creditors.push({ name, amount: bal })
+    else if (bal < 0) debtors.push({ name, amount: -bal })
+  }
+  creditors.sort((a, b) => b.amount - a.amount)
+  debtors.sort((a, b) => b.amount - a.amount)
+  const result: { from: string; to: string; amount: number }[] = []
+  let ci = 0
+  let di = 0
+  while (ci < creditors.length && di < debtors.length) {
+    const amount = Math.min(creditors[ci].amount, debtors[di].amount)
+    if (amount > 0) result.push({ from: debtors[di].name, to: creditors[ci].name, amount })
+    creditors[ci].amount -= amount
+    debtors[di].amount -= amount
+    if (creditors[ci].amount === 0) ci++
+    if (debtors[di].amount === 0) di++
+  }
+  return result
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -80,19 +123,50 @@ serve(async (req) => {
       return json({ error: 'Target user has no line_user_id', reason: 'no_line_user_id' }, 400)
     }
 
-    // 4. 未精算の settlement(複数受取人合算)を取得
-    const { data: settlements } = await supabase
-      .from('settlements')
-      .select('from_name, to_name, amount, is_settled')
-      .eq('event_id', eventId)
-      .eq('from_name', participant.name)
-      .eq('is_settled', false)
+    // 4. 未精算 settlement を計算で求める
+    //    KANJI では settlements テーブルは「精算完了にする」ボタンを押した瞬間に初めて
+    //    行が insert される設計のため、未精算分はテーブルから取れない。
+    //    advances + participants から都度計算する(send-group-reminder と同じパターン)。
+    const [allPartsRes, advRes, settledRes] = await Promise.all([
+      supabase.from('participants').select('name').eq('event_id', eventId),
+      supabase
+        .from('advances')
+        .select('payer_name, amount, split_target, target_names')
+        .eq('event_id', eventId),
+      supabase
+        .from('settlements')
+        .select('from_name, to_name, is_settled')
+        .eq('event_id', eventId)
+        .eq('is_settled', true),
+    ])
 
-    if (!settlements || settlements.length === 0) {
+    const allParticipants = allPartsRes.data ?? []
+    const advances = advRes.data ?? []
+    const alreadySettled = settledRes.data ?? []
+
+    if (advances.length === 0) {
+      return json({ error: 'No advances to remind for', reason: 'no_advances' }, 400)
+    }
+
+    const allNames = new Set<string>([
+      ...allParticipants.map((p) => p.name as string),
+      ...advances.map((a) => a.payer_name as string),
+    ])
+    const computed = calculateSettlements(advances as never, [...allNames])
+
+    // 既に精算済みのペアは除外し、from = participant.name の未精算分のみを抽出
+    const settledKey = new Set(
+      alreadySettled.map((s) => `${s.from_name}-${s.to_name}`),
+    )
+    const myUnsettled = computed.filter(
+      (s) => s.from === participant.name && !settledKey.has(`${s.from}-${s.to}`),
+    )
+
+    if (myUnsettled.length === 0) {
       return json({ error: 'No unsettled rows for this participant', reason: 'no_unsettled' }, 400)
     }
 
-    const totalAmount = settlements.reduce((sum, s) => sum + (s.amount as number), 0)
+    const totalAmount = myUnsettled.reduce((sum, s) => sum + s.amount, 0)
 
     // 5. 文面を組み立て(クライアント側 reminder-template.ts と同じトーン)
     const eventUrl = `${APP_URL}/e/${ev.slug}`
@@ -101,10 +175,10 @@ serve(async (req) => {
       ``,
       `「${ev.title}」の精算がまだ残っているようなので、念のため共有します。`,
     ]
-    for (const s of settlements) {
-      lines.push(`${s.to_name}さんへ ¥${(s.amount as number).toLocaleString()}`)
+    for (const s of myUnsettled) {
+      lines.push(`${s.to}さんへ ¥${s.amount.toLocaleString()}`)
     }
-    if (settlements.length > 1) {
+    if (myUnsettled.length > 1) {
       lines.push(``, `合計: ¥${totalAmount.toLocaleString()}`)
     }
     lines.push(``, `詳細はこちらから確認できます:`, eventUrl)
@@ -140,7 +214,7 @@ serve(async (req) => {
         event_id: eventId,
         payload: {
           channel: 'line_push',
-          settlement_count: settlements.length,
+          settlement_count: myUnsettled.length,
           target_participant_id_present: true,
         },
       })
@@ -148,7 +222,7 @@ serve(async (req) => {
       console.warn('[notify-participant-payment] growth_events insert failed:', e)
     }
 
-    return json({ ok: true, settlement_count: settlements.length, total: totalAmount }, 200)
+    return json({ ok: true, settlement_count: myUnsettled.length, total: totalAmount }, 200)
   } catch (err) {
     console.error('[notify-participant-payment] Error:', err)
     return json({ error: String(err) }, 500)
