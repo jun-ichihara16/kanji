@@ -34,7 +34,7 @@ export default function EventManage() {
   const {
     fetchEventById, fetchParticipants, addParticipant, updateParticipantName, deleteParticipant, togglePaid,
     fetchAdvances, addAdvance, deleteAdvance, deleteEvent, updateEvent,
-    fetchSettlements, upsertSettlement, markEventCompleted, updateReminderSettings, sendGroupReminder,
+    fetchSettlements, upsertSettlement, markEventCompleted, notifyParticipantPayment, updateReminderSettings, sendGroupReminder,
     updateParticipantSplit, updateSplitMode,
     fetchMyEvents,
   } = useEvent()
@@ -308,6 +308,27 @@ export default function EventManage() {
       cancelled = true
     }
   }, [event?.id, user?.id])
+
+  // Phase 2 v1.2 C-6 拡張: LINE ログイン済み参加者に LINE で個別 push リマインド
+  // ボタン押下 → notify-participant-payment Edge Function → LINE Messaging API
+  const [lineNotifyState, setLineNotifyState] = useState<Record<string, 'sending' | 'sent' | 'no_line' | 'failed' | null>>({})
+  const handleLineNotify = async (from: string, participantId: string) => {
+    if (!id || !user?.id) return
+    setLineNotifyState((prev) => ({ ...prev, [from]: 'sending' }))
+    const { ok, data } = await notifyParticipantPayment({
+      eventId: id,
+      participantId,
+      hostUserId: user.id,
+    })
+    let next: 'sent' | 'no_line' | 'failed'
+    if (ok) next = 'sent'
+    else if (data?.reason === 'no_user_id' || data?.reason === 'no_line_user_id') next = 'no_line'
+    else next = 'failed'
+    setLineNotifyState((prev) => ({ ...prev, [from]: next }))
+    setTimeout(() => {
+      setLineNotifyState((prev) => ({ ...prev, [from]: null }))
+    }, 3000)
+  }
 
   // Phase 2 v1.2 C-6: 催促文面コピー(個別宛て)
   // 押下した settlement キー(`${from}-${to}`)を一時保持し、「コピー済み ✓」表示に使う
@@ -988,8 +1009,8 @@ export default function EventManage() {
                   </span>
                   <span className="text-xs font-semibold bg-green-light text-green-dark px-2 py-1 rounded-full">
                     {event.split_mode === 'equal' && '全員同額'}
-                    {event.split_mode === 'ai_mild' && 'AI マイルド'}
-                    {event.split_mode === 'ai_strict' && 'AI しっかり'}
+                    {event.split_mode === 'ai_mild' && '気持ち傾斜'}
+                    {event.split_mode === 'ai_strict' && '漢気傾斜'}
                     {event.split_mode === 'manual' && '手動調整'}
                   </span>
                 </button>
@@ -1308,21 +1329,48 @@ export default function EventManage() {
                                 )}
 
                                 {/* Phase 2 v1.2 C-6: 催促文面コピー(個別宛て・未精算のみ) */}
-                                {!isSettled && (
-                                  <button
-                                    onClick={() => handleCopyReminder({ from: s.from, to: s.to, amount: s.amount })}
-                                    className={`w-full mt-2 py-1.5 text-[11px] font-semibold rounded-lg border transition ${
-                                      reminderCopiedKey === `${s.from}-${s.to}`
-                                        ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                        : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
-                                    }`}
-                                    aria-label={`${s.from}さんへの催促文面をコピー`}
-                                  >
-                                    {reminderCopiedKey === `${s.from}-${s.to}`
-                                      ? '✓ 催促文をコピーしました'
-                                      : `💬 ${s.from}さんへの催促文をコピー`}
-                                  </button>
-                                )}
+                                {!isSettled && (() => {
+                                  const fromParticipant = participants.find((pp) => pp.name === s.from)
+                                  const fromHasLine = !!fromParticipant?.user_id
+                                  const lineState = lineNotifyState[s.from] ?? null
+                                  return (
+                                    <div className="mt-2 space-y-1.5">
+                                      {fromHasLine && fromParticipant && (
+                                        <button
+                                          onClick={() => handleLineNotify(s.from, fromParticipant.id)}
+                                          disabled={lineState === 'sending'}
+                                          className={`w-full py-1.5 text-[11px] font-semibold rounded-lg border transition ${
+                                            lineState === 'sent'
+                                              ? 'bg-green text-white border-green'
+                                              : lineState === 'no_line' || lineState === 'failed'
+                                                ? 'bg-red-50 text-red-700 border-red-200'
+                                                : 'bg-[#06C755] text-white border-[#06C755] hover:brightness-90'
+                                          }`}
+                                          aria-label={`${s.from}さんに LINE で個別リマインドを送る`}
+                                        >
+                                          {lineState === 'sending' && '送信中...'}
+                                          {lineState === 'sent' && '✓ LINEに通知しました'}
+                                          {lineState === 'no_line' && '⚠ この参加者はLINE未連携'}
+                                          {lineState === 'failed' && '⚠ 送信に失敗しました'}
+                                          {!lineState && `📨 ${s.from}さんにLINEで通知`}
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => handleCopyReminder({ from: s.from, to: s.to, amount: s.amount })}
+                                        className={`w-full py-1.5 text-[11px] font-semibold rounded-lg border transition ${
+                                          reminderCopiedKey === `${s.from}-${s.to}`
+                                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                            : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
+                                        }`}
+                                        aria-label={`${s.from}さんへの催促文面をコピー`}
+                                      >
+                                        {reminderCopiedKey === `${s.from}-${s.to}`
+                                          ? '✓ 催促文をコピーしました'
+                                          : `💬 ${s.from}さんへの催促文をコピー${fromHasLine ? '(手動)' : ''}`}
+                                      </button>
+                                    </div>
+                                  )
+                                })()}
                               </div>
 
                               {/* 完了トグル */}
