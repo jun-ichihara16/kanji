@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { shareOrCopy, buildSettlementShareText, buildPaypayRequestText, buildEventPublicUrl, isValidPaypayLink } from '../lib/share'
 import { loginWithLINE } from '../lib/auth'
 import ParticipantAuthBadge from '../components/ParticipantAuthBadge'
+import { resolveInvitation, redeemInvitation } from '../lib/invitation'
 
 export default function GuestJoin() {
   const { slug } = useParams<{ slug: string }>()
@@ -147,6 +148,17 @@ export default function GuestJoin() {
           setMyName(user.displayName)
           localStorage.setItem(`kanji_my_pids_${slug}`, JSON.stringify(newIds))
           localStorage.setItem(`kanji_my_name_${slug}`, user.displayName)
+
+          // Phase 2 v1.2 C-8: 招待 token があれば消費記録(参加成立時)
+          void resolveInvitation().then(async (inv) => {
+            if (!inv || !user?.id) return
+            await redeemInvitation({
+              token: inv.token,
+              redeemedUserId: user.id,
+              redeemedEventId: ev.id,
+              layer: inv.layer,
+            })
+          })
         }
       }
 
