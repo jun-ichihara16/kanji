@@ -99,5 +99,6 @@ jobs:
           supabase functions deploy notify-contact
           supabase functions deploy notify-organizer
           supabase functions deploy send-group-reminder
+          supabase functions deploy notify-participant-payment
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
