@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useEvent } from '../../hooks/useEvent'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { supabase } from '../../lib/supabase'
+import { aggregateMshMonthly, recentMonths } from '../../lib/phase2_kpi'
 
 export default function AdminDashboard() {
   const { fetchAllUsers, fetchAllEvents, fetchAllParticipants, fetchAllAdvances } = useEvent()
@@ -8,14 +10,23 @@ export default function AdminDashboard() {
   const [allEvents, setAllEvents] = useState<any[]>([])
   const [allParts, setAllParts] = useState<any[]>([])
   const [allAdvances, setAllAdvances] = useState<any[]>([])
+  const [allSettlements, setAllSettlements] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([fetchAllUsers(), fetchAllEvents(), fetchAllParticipants(), fetchAllAdvances()]).then(([uRes, eRes, pRes, aRes]) => {
+    Promise.all([
+      fetchAllUsers(),
+      fetchAllEvents(),
+      fetchAllParticipants(),
+      fetchAllAdvances(),
+      // Phase 2 KPI 用: settlements を全件取得(集計用、件数は通常 events × 数件オーダー)
+      supabase.from('settlements').select('event_id, is_settled'),
+    ]).then(([uRes, eRes, pRes, aRes, sRes]) => {
       setAllUsers(uRes.data || [])
       setAllEvents(eRes.data || [])
       setAllParts(pRes.data || [])
       setAllAdvances(aRes.data || [])
+      setAllSettlements(sRes.data || [])
       setLoading(false)
     })
   }, [])
@@ -93,6 +104,34 @@ export default function AdminDashboard() {
       events: allEvents.filter((e) => e.created_at?.substring(0, 7) === m).length,
     }))
   }, [allUsers, allEvents])
+
+  // === Phase 2 KPI (暫定) ===
+  //   - MSH: 月間 精算完了幹事数(ユニーク)
+  //   - 月次 完了イベント数
+  //   - テストアカウント除外件数
+  //   参照: docs/phase2/01_strategy.md § 3-4
+  const phase2 = useMemo(() => {
+    const months = recentMonths(3, now)
+    const rows = aggregateMshMonthly(
+      allEvents.map((e: any) => ({
+        id: e.id,
+        host_id: e.host_id ?? null,
+        completed_at: e.completed_at ?? null,
+      })),
+      allParts.map((p: any) => ({ event_id: p.event_id })),
+      allAdvances.map((a: any) => ({ event_id: a.event_id })),
+      allSettlements.map((s: any) => ({ event_id: s.event_id, is_settled: !!s.is_settled })),
+      allUsers.map((u: any) => ({ id: u.id, is_test_account: !!u.is_test_account })),
+      months,
+    )
+    const excludedAccounts = allUsers.filter((u: any) => u.is_test_account === true).length
+    const excludedEvents = allEvents.filter((e: any) => {
+      if (e.host_id == null) return false
+      const host = allUsers.find((u: any) => u.id === e.host_id)
+      return host?.is_test_account === true
+    }).length
+    return { rows, excludedAccounts, excludedEvents }
+  }, [allEvents, allParts, allAdvances, allSettlements, allUsers])
 
   const getMoM = (current: number, prev: number) => {
     if (prev === 0) return current > 0 ? '+∞' : '—'
@@ -180,6 +219,38 @@ export default function AdminDashboard() {
           <div className="text-xs text-sub mb-1">PayPay番号収集率</div>
           <div className="font-inter text-2xl font-extrabold">{ops.paypayRate}%</div>
           <div className="text-[10px] text-sub mt-0.5">{allParts.length}人中</div>
+        </div>
+      </div>
+
+      {/* === Phase 2 KPI(暫定) === */}
+      <div className="bg-white border border-border rounded-xl p-4 mb-6">
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="text-sm font-bold">Phase 2 KPI(暫定)</h2>
+          <span className="text-[10px] text-sub">events.completed_at 基準・JST</span>
+        </div>
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="text-left text-sub border-b border-border">
+              <th className="py-1.5 font-semibold">月</th>
+              <th className="py-1.5 font-semibold text-right">MSH</th>
+              <th className="py-1.5 font-semibold text-right">完了イベント数</th>
+            </tr>
+          </thead>
+          <tbody>
+            {phase2.rows.map((r) => (
+              <tr key={r.month_jst} className="border-b border-border last:border-b-0">
+                <td className="py-1.5">{r.month_jst}</td>
+                <td className="py-1.5 text-right font-inter font-bold">{r.msh}</td>
+                <td className="py-1.5 text-right font-inter">{r.completed_events}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="mt-2 text-[10px] text-sub">
+          除外: テストアカウント {phase2.excludedAccounts}人 / それらが host のイベント {phase2.excludedEvents}件
+        </div>
+        <div className="mt-1 text-[10px] text-sub">
+          MSH 対象条件: 参加者2人以上 + 立替1件以上 + settlements が全件 is_settled=true。Phase 2 戦略本体は <code>docs/phase2/01_strategy.md</code> 参照。
         </div>
       </div>
 
