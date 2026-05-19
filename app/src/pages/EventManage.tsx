@@ -23,6 +23,8 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { shareOrCopy, buildSettlementShareText, buildPaypayRequestText, isValidPaypayLink } from '../lib/share'
 import { SETTLEMENT_TITLE, buildRequestMessage } from '../lib/eventFlow'
 import { track } from '../lib/analytics'
+import { buildIndividualReminderText } from '../lib/reminder-template'
+import { trackGrowthEvent } from '../lib/growth-events'
 
 const TABS = ['参加者', '立替'] as const
 
@@ -292,6 +294,45 @@ export default function EventManage() {
 
     return { hostName, toReceive, toPay }
   }, [advances, computedSettlements, settledMap])
+
+  // Phase 2 v1.2 C-6: 催促文面コピー(個別宛て)
+  // 押下した settlement キー(`${from}-${to}`)を一時保持し、「コピー済み ✓」表示に使う
+  const [reminderCopiedKey, setReminderCopiedKey] = useState<string | null>(null)
+  const handleCopyReminder = async (s: { from: string; to: string; amount: number }) => {
+    if (!event || !id) return
+    const payeeParticipant = participants.find((pp) => pp.name === s.to)
+    const paymentHint = payeeParticipant?.paypay_phone
+      ? `PayPay: ${payeeParticipant.paypay_phone}`
+      : payeeParticipant?.paypay_link_url
+        ? `PayPay 受取リンク: ${payeeParticipant.paypay_link_url}`
+        : undefined
+
+    const text = buildIndividualReminderText({
+      eventTitle: event.title,
+      settlement: s,
+      eventUrl: shareUrl,
+      paymentHint,
+    })
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // クリップボード書き込みが失敗してもログだけは残す
+    }
+    const key = `${s.from}-${s.to}`
+    setReminderCopiedKey(key)
+    setTimeout(() => setReminderCopiedKey((prev) => (prev === key ? null : prev)), 2000)
+    if (user?.id) {
+      void trackGrowthEvent({
+        eventType: 'manual_reminder_copied',
+        userId: user.id,
+        eventId: id,
+        payload: {
+          template_version: 'v1',
+          has_payment_hint: !!paymentHint,
+        },
+      })
+    }
+  }
 
   // 手動リマインド（C-1）
   const [bulkReminderSent, setBulkReminderSent] = useState(false)
@@ -1248,6 +1289,23 @@ export default function EventManage() {
                                   <div className="text-[11px] text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5 text-center">
                                     ⚠ 受取人 "{group.payeeName}" の参加者情報が見つかりません
                                   </div>
+                                )}
+
+                                {/* Phase 2 v1.2 C-6: 催促文面コピー(個別宛て・未精算のみ) */}
+                                {!isSettled && (
+                                  <button
+                                    onClick={() => handleCopyReminder({ from: s.from, to: s.to, amount: s.amount })}
+                                    className={`w-full mt-2 py-1.5 text-[11px] font-semibold rounded-lg border transition ${
+                                      reminderCopiedKey === `${s.from}-${s.to}`
+                                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                        : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
+                                    }`}
+                                    aria-label={`${s.from}さんへの催促文面をコピー`}
+                                  >
+                                    {reminderCopiedKey === `${s.from}-${s.to}`
+                                      ? '✓ 催促文をコピーしました'
+                                      : `💬 ${s.from}さんへの催促文をコピー`}
+                                  </button>
                                 )}
                               </div>
 
